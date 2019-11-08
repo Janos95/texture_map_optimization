@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/corrade" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/corrade" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/CoMISo" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/eigen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/embree" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/glad" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/libigl-imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/predicates" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/stb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/tetgen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/tinyxml2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/external/triangle" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/magnum" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/magnum-plugins" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/magnum" vcs="Git" />
+  </component>
+</project>
