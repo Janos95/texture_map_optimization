@@ -2,6 +2,7 @@
 
 #include "viewer.h"
 #include "vertex_colored_drawable.h"
+#include "glob.h"
 
 #include <Magnum/Trade/Trade.h>
 #include <Magnum/Trade/AbstractImporter.h>
@@ -14,12 +15,20 @@
 #include <Magnum/Shaders/VertexColor.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/MeshTools/Interleave.h>
+#include <Magnum/Image.h>
+#include <Magnum/Trade/ImageData.h>
 
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/Array.h>
+
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 
 #include <cassert>
 #include <random>
+#include <algorithm>
+#include <iostream>
 
 using namespace Corrade;
 using namespace Magnum;
@@ -34,15 +43,12 @@ struct Vertex
 };
 
 
-void addObject(Object3D& object, UnsignedInt i) {
 
-}
 
 
 int main(int argc, char** argv) {
     PluginManager::Manager<Trade::AbstractImporter> manager;
     Containers::Pointer<Trade::AbstractImporter> meshImporter = manager.loadAndInstantiate("AnySceneImporter");
-    Containers::Pointer<Trade::AbstractImporter> imageImporter = manager.loadAndInstantiate("AnyImageImporter");
 
     if(!meshImporter)
         std::exit(1);
@@ -50,14 +56,22 @@ int main(int argc, char** argv) {
     if(!meshImporter->openFile("/home/jmeny/texture_map_optimization/tsdf_color_mapped.ply"))
         std::exit(4);
 
+    auto imagePaths = glob("/home/jmeny/shots/simon/crane_part1/rgb", ".*\\.png");
+    std::sort(imagePaths.begin(), imagePaths.end());
+
+    std::vector<cv::Mat> imgs(imagePaths.size());
+
+    for (int i = 0; i < imgs.size(); ++i) {
+        std::cout << imagePaths[i] << std::endl;
+        //imgs[i] = cv::imread(imagePaths[i].string());
+    }
+
     assert(meshImporter->mesh3DCount() == 1);
 
     auto mesh = meshImporter->mesh3D(0);
 
-
     //this creates the opengl context
     Viewer viewer({argc, argv});
-
 
     auto glMesh = MeshTools::compile(*mesh);
 

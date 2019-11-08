@@ -1,0 +1,8 @@
+[requires]
+fmt/5.2.1@bincrafters/stable
+opencv/4.0.0@conan/stable
+
+
+[generators]
+cmake
+
