@@ -7,6 +7,7 @@
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/GL/Mesh.h>
+#include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
@@ -52,19 +53,13 @@ int main(int argc, char** argv) {
     assert(meshImporter->mesh3DCount() == 1);
 
     auto mesh = meshImporter->mesh3D(0);
-    auto interleaved = MeshTools::interleave(mesh->positions(0), mesh->colors(0));
+
 
     //this creates the opengl context
     Viewer viewer({argc, argv});
 
-    GL::Buffer vertices;
-    vertices.setData(interleaved, GL::BufferUsage::StaticDraw);
 
-    GL::Mesh glMesh;
-    glMesh.addVertexBuffer(vertices, 0,
-                         Shaders::VertexColor3D::Position{},
-                         Shaders::VertexColor3D::Color3{})
-           .setCount(vertices.size());
+    auto glMesh = MeshTools::compile(*mesh);
 
     viewer.addMesh(glMesh);
     viewer.exec();
