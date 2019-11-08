@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "vertex_colored_drawable.h"
+
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/Scene.h>
@@ -21,6 +23,11 @@ class Viewer: public Platform::Application {
 public:
     explicit Viewer(const Arguments& arguments);
 
+    void addMesh(GL::Mesh& mesh)
+    {
+        new VertexColoredDrawable(m_manipulator, m_shader, mesh, m_drawables);
+    }
+
 private:
     void drawEvent() override;
     void viewportEvent(ViewportEvent& event) override;
@@ -32,11 +39,6 @@ private:
     Vector3 positionOnSphere(const Vector2i& position) const;
 
     Shaders::VertexColor3D m_shader;
-
-//    Shaders::Phong _coloredShader,
-//            _texturedShader{Shaders::Phong::Flag::DiffuseTexture};
-//    Containers::Array<Containers::Optional<GL::Mesh>> _meshes;
-//    Containers::Array<Containers::Optional<GL::Texture2D>> _textures;
 
     Scene3D m_scene;
     Object3D m_manipulator, m_cameraObject;

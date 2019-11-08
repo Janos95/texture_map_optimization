@@ -5,16 +5,25 @@
 #include "viewer.h"
 
 #include <Magnum/GL/DefaultFramebuffer.h>
+#include <Magnum/GL/Renderer.h>
+#include <Magnum/SceneGraph/Camera.h>
+#include <Magnum/SceneGraph/Drawable.h>
+#include <Magnum/SceneGraph/MatrixTransformation3D.h>
+#include <Magnum/SceneGraph/Scene.h>
+#include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/Math/Matrix4.h>
 
 using namespace Corrade;
 using namespace Magnum;
 
+using namespace Math::Literals;
+
 Viewer::Viewer(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
-                .setTitle("Viewer")
-                .setWindowFlags(Configuration::WindowFlag::Resizable)}
+                                         .setTitle("Viewer")
+                                         .setWindowFlags(Configuration::WindowFlag::Resizable)}
 {
-    /* Every scene needs a camera */
+
     m_cameraObject
             .setParent(&m_scene)
             .translate(Vector3::zAxis(5.0f));
@@ -23,21 +32,13 @@ Viewer::Viewer(const Arguments& arguments):
             .setProjectionMatrix(Matrix4::perspectiveProjection(35.0_degf, 1.0f, 0.01f, 1000.0f))
             .setViewport(GL::defaultFramebuffer.viewport().size());
 
-    /* Base object, parent of all (for easy manipulation) */
+
     m_manipulator.setParent(&m_scene);
 
-    /* Setup renderer and shader defaults */
+
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
-    _coloredShader
-            .setAmbientColor(0x111111_rgbf)
-            .setSpecularColor(0xffffff_rgbf)
-            .setShininess(80.0f);
-    _texturedShader
-            .setAmbientColor(0x111111_rgbf)
-            .setSpecularColor(0x111111_rgbf)
-            .setShininess(80.0f);
 }
 
 
@@ -77,12 +78,6 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
     redraw();
 }
 
-Vector3 Viewer::positionOnSphere(const Vector2i& position) const {
-    const Vector2 positionNormalized = Vector2{position}/Vector2{m_camera->viewport()} - Vector2{0.5f};
-    const Float length = positionNormalized.length();
-    const Vector3 result(length > 1.0f ? Vector3(positionNormalized, 0.0f) : Vector3(positionNormalized, 1.0f - length));
-    return (result*Vector3::yScale(-1.0f)).normalized();
-}
 
 void Viewer::mouseMoveEvent(MouseMoveEvent& event) {
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
@@ -96,4 +91,11 @@ void Viewer::mouseMoveEvent(MouseMoveEvent& event) {
     m_previousPosition = currentPosition;
 
     redraw();
+}
+
+Vector3 Viewer::positionOnSphere(const Vector2i& position) const {
+    const Vector2 positionNormalized = Vector2{position}/Vector2{m_camera->viewport()} - Vector2{0.5f};
+    const Float length = positionNormalized.length();
+    const Vector3 result(length > 1.0f ? Vector3(positionNormalized, 0.0f) : Vector3(positionNormalized, 1.0f - length));
+    return (result*Vector3::yScale(-1.0f)).normalized();
 }
