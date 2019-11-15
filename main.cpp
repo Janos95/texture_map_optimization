@@ -53,18 +53,18 @@ int main(int argc, char** argv) {
     if(!meshImporter)
         std::exit(1);
 
-    if(!meshImporter->openFile("/home/jmeny/texture_map_optimization/tsdf_color_mapped.ply"))
+    if(!meshImporter->openFile("/home/janos/CLionProjects/texture_map_optimization/assets/fountain_small/scene/integrated.ply"))
         std::exit(4);
 
-    auto imagePaths = glob("/home/jmeny/shots/simon/crane_part1/rgb", ".*\\.png");
-    std::sort(imagePaths.begin(), imagePaths.end());
+    //auto imagePaths = glob("/home/janos/shots/simon/crane_part1/rgb", ".*\\.png");
+    //std::sort(imagePaths.begin(), imagePaths.end());
 
-    std::vector<cv::Mat> imgs(imagePaths.size());
+    //std::vector<cv::Mat> imgs(imagePaths.size());
 
-    for (int i = 0; i < imgs.size(); ++i) {
-        std::cout << imagePaths[i] << std::endl;
+    //for (int i = 0; i < imgs.size(); ++i) {
+    //    std::cout << imagePaths[i] << std::endl;
         //imgs[i] = cv::imread(imagePaths[i].string());
-    }
+    //}
 
     assert(meshImporter->mesh3DCount() == 1);
 
