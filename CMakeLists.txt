@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.13)
 project(TextureOptimization)
 
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
 
-set(WITH_SDL2APPLICATION ON CACHE BOOL "" FORCE)
-set(WITH_ASSIMPIMPORTER ON CACHE BOOL "" FORCE)
-set(WITH_ANYIMAGEIMPORTER ON CACHE BOOL "" FORCE)
-set(WITH_ANYSCENEIMPORTER ON CACHE BOOL "" FORCE)
-
-add_subdirectory(external/corrade)
-add_subdirectory(external/magnum)
-add_subdirectory(external/magnum-plugins)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
 
 
-add_custom_target(plugins ALL DEPENDS
-        Magnum::AnySceneImporter
-        Magnum::AnyImageImporter)
+find_package(Corrade REQUIRED Main)
+find_package(Magnum REQUIRED
+        GL
+        MeshTools
+        Shaders
+        SceneGraph
+        Trade
+        Sdl2Application)
+
+find_package(scn REQUIRED)
+
+add_subdirectory(scoped_timer)
 
 add_executable(texture_map_optimization
         main.cpp
@@ -23,22 +27,24 @@ add_executable(texture_map_optimization
         vertex_color_drawable.cpp
         vertex_colored_drawable.h
         glob.cpp
-        glob.h)
+        glob.h
+        load_poses.hpp)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
+
+set_property(TARGET texture_map_optimization PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(texture_map_optimization PRIVATE
         Corrade::Main
-        Magnum::Sdl2Application
+        Magnum::Application
         Magnum::GL
         Magnum::Magnum
         Magnum::MeshTools
         Magnum::SceneGraph
         Magnum::Shaders
         Magnum::Trade
+        scn::scn
         stdc++fs
-        CONAN_PKG::opencv)
+        scoped_timer::scoped_timer)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)

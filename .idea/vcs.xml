@@ -19,6 +19,7 @@
     <mapping directory="$PROJECT_DIR$/external/libigl/external/triangle" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/magnum" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/magnum-plugins" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/scnlib" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/magnum" vcs="Git" />
   </component>
 </project>

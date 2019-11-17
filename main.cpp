@@ -3,6 +3,9 @@
 #include "viewer.h"
 #include "vertex_colored_drawable.h"
 #include "glob.h"
+#include "load_poses.hpp"
+
+#include <scoped_timer/scoped_timer.hpp>
 
 #include <Magnum/Trade/Trade.h>
 #include <Magnum/Trade/AbstractImporter.h>
@@ -10,6 +13,7 @@
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Matrix3.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Shaders/VertexColor.h>
@@ -36,17 +40,26 @@ using namespace Magnum;
 using namespace Magnum::Math::Literals;
 
 
-struct Vertex
+Math::Matrix3<double> PrimeSenseDefault()
 {
-    Vector3 position;
-    Color3 color;
-};
-
-
+    Math::Matrix3<double> cameraMatrix(Math::IdentityInit);
+    cameraMatrix[0][0] = 525.0;
+    cameraMatrix[1][1] = 525.0;
+    cameraMatrix[0][2] = 319.5;
+    cameraMatrix[1][2] = 239.5;
+    return cameraMatrix;
+}
 
 
 
 int main(int argc, char** argv) {
+
+    auto poses = loadPoses("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
+    auto cameraMatrix = PrimeSenseDefault();
+
+    Utility::Debug{} << cameraMatrix;
+
+
     PluginManager::Manager<Trade::AbstractImporter> manager;
     Containers::Pointer<Trade::AbstractImporter> meshImporter = manager.loadAndInstantiate("AnySceneImporter");
 

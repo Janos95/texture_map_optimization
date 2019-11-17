@@ -10,3 +10,6 @@
 [submodule "external/libigl"]
 	path = external/libigl
 	url = git@github.com:libigl/libigl.git
+[submodule "external/scnlib"]
+	path = external/scnlib
+	url = https://github.com/eliaskosunen/scnlib
