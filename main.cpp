@@ -45,8 +45,8 @@ Math::Matrix3<double> PrimeSenseDefault()
     Math::Matrix3<double> cameraMatrix(Math::IdentityInit);
     cameraMatrix[0][0] = 525.0;
     cameraMatrix[1][1] = 525.0;
-    cameraMatrix[0][2] = 319.5;
-    cameraMatrix[1][2] = 239.5;
+    cameraMatrix[2][0] = 319.5;
+    cameraMatrix[2][1] = 239.5;
     return cameraMatrix;
 }
 

@@ -7,13 +7,17 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
 
-find_package(Corrade REQUIRED Main)
-find_package(Magnum REQUIRED
+find_package(Corrade REQUIRED
+        Main
+        Containers)
+find_package(Magnum REQUIREDb
         GL
         MeshTools
         Shaders
         SceneGraph
         Trade
+        AnySceneImporter
+        AnyImageImporter
         Sdl2Application)
 
 find_package(scn REQUIRED)
@@ -35,6 +39,7 @@ set_property(TARGET texture_map_optimization PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(texture_map_optimization PRIVATE
         Corrade::Main
+        Corrade::Containers
         Magnum::Application
         Magnum::GL
         Magnum::Magnum
@@ -42,6 +47,8 @@ target_link_libraries(texture_map_optimization PRIVATE
         Magnum::SceneGraph
         Magnum::Shaders
         Magnum::Trade
+        Magnum::AnySceneImporter
+        Magnum::AnyImageImporter
         scn::scn
         stdc++fs
         scoped_timer::scoped_timer)
