@@ -21,7 +21,11 @@ add_executable(texture_map_optimization
         color_handle.hpp
         glob.cpp
         glob.h
-        cut_mesh_rosy.hpp)
+        cut_mesh_rosy.hpp
+        uv_unwrap.hpp
+        load_data.hpp
+        load_data.hpp
+        trajectory.hpp)
 
 target_link_libraries(texture_map_optimization PRIVATE
         igl::core
@@ -31,6 +35,7 @@ target_link_libraries(texture_map_optimization PRIVATE
         igl::triangle
         igl::comiso
         CONAN_PKG::opencv
+        CONAN_PKG::fmt
         stdc++fs)
 
 

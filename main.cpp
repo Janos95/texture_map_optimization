@@ -1,6 +1,5 @@
 
-#include "color_handle.hpp"
-#include "cut_mesh_rosy.hpp"
+
 
 
 
@@ -103,6 +102,9 @@
 //}
 
 
+#include "color_handle.hpp"
+#include "uv_unwrap.hpp"
+#include "load_data.hpp"
 
 #include <igl/arap.h>
 #include <igl/boundary_loop.h>
@@ -112,87 +114,85 @@
 #include <igl/opengl/glfw/Viewer.h>
 
 
-Eigen::MatrixXd V, Vcut;
-Eigen::MatrixXi F, Fcut;
-Eigen::MatrixXd V_uv;
-Eigen::MatrixXd initial_guess;
-double uv_scale = 200.;
-bool show_uv = false;
+//
+//double uv_scale = 200.;
+//bool show_uv = false;
+//
+//bool key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifier)
+//{
+//    if (key == '1')
+//        show_uv = false;
+//    else if (key == '2')
+//        show_uv = true;
+//
+//    if (key == 'q')
+//        V_uv = initial_guess;
+//
+//    if (show_uv)
+//    {
+//        viewer.data().set_mesh(V_uv,Fcut);
+//        viewer.core().align_camera_center(V_uv,Fcut);
+//    }
+//    else
+//    {
+//        viewer.data().set_mesh(Vcut,Fcut);
+//        viewer.core().align_camera_center(Vcut,Fcut);
+//    }
+//
+//    viewer.data().compute_normals();
+//
+//    return false;
+//}
 
-bool key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifier)
+class ZBufferRenderer
 {
-    if (key == '1')
-        show_uv = false;
-    else if (key == '2')
-        show_uv = true;
-
-    if (key == 'q')
-        V_uv = initial_guess;
-
-    if (show_uv)
+    ZBufferRenderer(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F)
     {
-        viewer.data().set_mesh(V_uv,Fcut);
-        viewer.core().align_camera_center(V_uv,Fcut);
-    }
-    else
-    {
-        viewer.data().set_mesh(Vcut,Fcut);
-        viewer.core().align_camera_center(Vcut,Fcut);
+        m_viewer.data().set_mesh(V,F);
     }
 
-    viewer.data().compute_normals();
+    auto render()
+    {
 
-    return false;
-}
+    }
+
+private:
+    igl::opengl::glfw::Viewer m_viewer;
+};
+
 
 int main(int argc, char *argv[])
 {
-    using namespace std;
-    // Load a mesh in OFF format
+
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi F;
     igl::readPLY("/home/jmeny/texture_map_optimization/crane.ply", V, F);
-    cut_mesh_rosy(V,F,Vcut,Fcut);
 
-    // Compute the initial solution for ARAP (harmonic parametrization)
-    Eigen::VectorXi bnd;
-    igl::boundary_loop(Fcut,bnd);
-    Eigen::MatrixXd bnd_uv;
-    igl::map_vertices_to_circle(Vcut,bnd,bnd_uv);
+    auto images = loadImages("/home/jmeny/shots/simon/crane_part1/rgb", Filter{});
+    auto poses = loadPoses("/home/jmeny/shots/simon/crane_part1/nikon_z7_opt.log", Filter{});
 
-    igl::harmonic(Vcut,Fcut,bnd,bnd_uv,1,initial_guess);
-
-    // Add dynamic regularization to avoid to specify boundary conditions
-    igl::ARAPData arap_data;
-    arap_data.with_dynamics = true;
-    Eigen::VectorXi b  = Eigen::VectorXi::Zero(0);
-    Eigen::MatrixXd bc = Eigen::MatrixXd::Zero(0,0);
-
-    // Initialize ARAP
-    arap_data.max_iter = 100;
-    // 2 means that we're going to *solve* in 2d
-    arap_precomputation(Vcut,Fcut,2,b,arap_data);
+    UVUnwrap unwrap(V, F);
+    Eigen::MatrixXd UV = unwrap.arap();
 
 
-    // Solve arap using the harmonic map as initial guess
-    V_uv = initial_guess;
-
-    arap_solve(bc,arap_data,V_uv);
+    ZBufferRenderer renderer(V, F);
 
 
-    // Scale UV to make the texture more clear
-    V_uv *= uv_scale;
 
-    // Plot the mesh
-    igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(Vcut, Fcut);
-    viewer.data().set_uv(V_uv);
-    viewer.callback_key_down = &key_down;
 
-    // Disable wireframe
-    viewer.data().show_lines = false;
 
-    // Draw checkerboard texture
-    viewer.data().show_texture = true;
-
-    // Launch the viewer
-    viewer.launch();
+//    // Plot the mesh
+//    igl::opengl::glfw::Viewer viewer;
+//    viewer.data().set_mesh(Vcut, Fcut);
+//    viewer.data().set_uv(V_uv);
+//    viewer.callback_key_down = &key_down;
+//
+//    // Disable wireframe
+//    viewer.data().show_lines = false;
+//
+//    // Draw checkerboard texture
+//    viewer.data().show_texture = true;
+//
+//    // Launch the viewer
+//    viewer.launch();
 }
