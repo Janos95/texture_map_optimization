@@ -17,6 +17,7 @@
     <mapping directory="$PROJECT_DIR$/external/libigl/external/tetgen" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/libigl/external/tinyxml2" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/libigl/external/triangle" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libigl/tutorial/data" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/magnum" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/magnum-plugins" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/magnum" vcs="Git" />
