@@ -5,7 +5,6 @@
 #include "glob.h"
 #include "load_poses.hpp"
 
-#include <scoped_timer/scoped_timer.hpp>
 
 #include <Magnum/Trade/Trade.h>
 #include <Magnum/Trade/AbstractImporter.h>
@@ -66,7 +65,7 @@ int main(int argc, char** argv) {
     if(!meshImporter)
         std::exit(1);
 
-    if(!meshImporter->openFile("/home/janos/CLionProjects/texture_map_optimization/assets/fountain_small/scene/integrated.ply"))
+    if(!meshImporter->openFile("/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated.ply"))
         std::exit(4);
 
     //auto imagePaths = glob("/home/janos/shots/simon/crane_part1/rgb", ".*\\.png");

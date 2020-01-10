@@ -1,16 +1,13 @@
 cmake_minimum_required(VERSION 3.13)
 project(TextureOptimization)
 
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/modules)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
-
-
-find_package(Corrade REQUIRED
+find_package(MagnumPlugins CONFIG REQUIRED)
+find_package(Corrade CONFIG REQUIRED
         Main
         Containers)
-find_package(Magnum REQUIREDb
+find_package(Magnum CONFIG REQUIRED
         GL
         MeshTools
         Shaders
@@ -20,9 +17,10 @@ find_package(Magnum REQUIREDb
         AnyImageImporter
         Sdl2Application)
 
-find_package(scn REQUIRED)
+find_package(scn CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
+find_package(OpenCV CONFIG REQUIRED)
 
-add_subdirectory(scoped_timer)
 
 add_executable(texture_map_optimization
         main.cpp
@@ -50,8 +48,7 @@ target_link_libraries(texture_map_optimization PRIVATE
         Magnum::AnySceneImporter
         Magnum::AnyImageImporter
         scn::scn
-        stdc++fs
-        scoped_timer::scoped_timer)
+        stdc++fs)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
