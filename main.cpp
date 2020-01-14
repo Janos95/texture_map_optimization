@@ -1,32 +1,21 @@
 
 
-#include "viewer.h"
-#include "vertex_colored_drawable.h"
+#include "viewer.hpp"
+#include "smart_drawable.hpp"
 #include "glob.h"
 #include "load_poses.hpp"
 
-
-#include <Magnum/Trade/Trade.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/MeshData3D.h>
-#include <Magnum/GL/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Matrix3.h>
 #include <Magnum/Math/Vector3.h>
-#include <Magnum/Math/Color.h>
-#include <Magnum/Shaders/VertexColor.h>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/MeshTools/Interleave.h>
-#include <Magnum/Image.h>
-#include <Magnum/Trade/ImageData.h>
 
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/Optional.h>
-#include <Corrade/Containers/Array.h>
 
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
+//#include <opencv2/core.hpp>
+//#include <opencv2/highgui.hpp>
 
 #include <cassert>
 #include <random>
@@ -53,7 +42,7 @@ Math::Matrix3<double> PrimeSenseDefault()
 
 int main(int argc, char** argv) {
 
-    auto poses = loadPoses("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
+    auto poses = loadPoses<float>("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
     auto cameraMatrix = PrimeSenseDefault();
 
     Utility::Debug{} << cameraMatrix;
@@ -81,21 +70,15 @@ int main(int argc, char** argv) {
     assert(meshImporter->mesh3DCount() == 1);
 
     auto mesh = meshImporter->mesh3D(0);
+ //   mesh->indices().clear();
 
     //this creates the opengl context
     Viewer viewer({argc, argv});
 
     auto glMesh = MeshTools::compile(*mesh);
 
-    viewer.addMesh(glMesh);
+
+    viewer.addObject(glMesh, Viewer::PCD);
     viewer.exec();
-
-
-    //    igl::lscm(
-//    const Eigen::MatrixXd& V,
-//    const Eigen::MatrixXi& F,
-//    const Eigen::VectorXi& b,
-//    const Eigen::MatrixXd& bc,
-//    Eigen::MatrixXd & V_uv)
 
 }

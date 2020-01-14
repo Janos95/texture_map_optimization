@@ -15,9 +15,10 @@
 using namespace Magnum;
 using Object3d = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
 
-class VertexColoredDrawable: public SceneGraph::Drawable3D {
+template<class S>
+class SmartDrawable: public SceneGraph::Drawable3D {
 public:
-    VertexColoredDrawable(Object3d& parent, Shaders::VertexColor3D& shader, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& group):
+    SmartDrawable(Object3d& parent, S& shader, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& group):
         SceneGraph::Drawable3D(parent, &group),
         m_shader(shader),
         m_mesh(mesh)
@@ -26,8 +27,11 @@ public:
 
 private:
 
-    void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
+    void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override{
+        m_shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformationMatrix);
+        m_mesh.draw(m_shader);
+    }
 
-    Shaders::VertexColor3D& m_shader;
+    S& m_shader;
     GL::Mesh& m_mesh;
 };

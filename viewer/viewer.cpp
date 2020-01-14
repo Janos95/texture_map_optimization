@@ -2,7 +2,7 @@
 // Created by janos on 08.11.19.
 //
 
-#include "viewer.h"
+#include "viewer.hpp"
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
