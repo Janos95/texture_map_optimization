@@ -4,13 +4,26 @@
 
 #pragma once
 
-//#include "pcd_shader.hpp"
-#include "smart_drawable.hpp"
+
+#include "compile_open_mesh.hpp"
+#include "scene.hpp"
+#include "render_pass.hpp"
+#include "../mesh.hpp"
+
+#include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
+
+#include <Corrade/Containers/StridedArrayView.h>
+#include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/VertexColor.h>
+#include <Magnum/Shaders/Phong.h>
+#include <Magnum/Shaders/Flat.h>
+#include <Magnum/GL/TextureFormat.h>
+#include <Magnum/Image.h>
+#include <Magnum/ImageView.h>
 
 #include <map>
 #include <memory>
@@ -23,45 +36,28 @@ using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
 using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 
 
+
+
 class Viewer: public Platform::Application {
 public:
-    explicit Viewer(const Arguments& arguments);
+    explicit Viewer(const Arguments& arguments, Scene& scene);
 
-    enum ShaderType{
-        PCD,
-        VERTEX_COLOR
-    };
-
-    SceneGraph::Drawable3D* addObject(GL::Mesh& object, ShaderType shader)
-    {
-        switch(shader){
-            case PCD:
-                return new SmartDrawable<Shaders::VertexColor3D>(m_manipulator, m_shader, object, m_drawables);
-            case VERTEX_COLOR:
-                return new SmartDrawable<Shaders::VertexColor3D>(m_manipulator, m_shader, object, m_drawables);
-            default:
-                return nullptr;
-        }
-    }
-
-
+    std::vector<std::function<void(Scene&)>> callbacks;
 private:
-    void drawEvent() override;
-    void viewportEvent(ViewportEvent& event) override;
+
+    Float depthAt(const Vector2i& windowPosition);
+    Vector3 unproject(const Vector2i& windowPosition, Float depth) const;
+
+    void keyPressEvent(KeyEvent& event) override;
     void mousePressEvent(MouseEvent& event) override;
-    void mouseReleaseEvent(MouseEvent& event) override;
     void mouseMoveEvent(MouseMoveEvent& event) override;
     void mouseScrollEvent(MouseScrollEvent& event) override;
+    void drawEvent() override;
 
-    Vector3 positionOnSphere(const Vector2i& position) const;
+    Scene& m_scene;
+    RenderPass m_renderer;
 
-
-    Scene3D m_scene;
-    Object3D m_manipulator, m_cameraObject;
-    SceneGraph::Camera3D* m_camera;
-    SceneGraph::DrawableGroup3D m_drawables;
-    Vector3 m_previousPosition;
-
-    Shaders::VertexColor3D m_shader;
-    std::tuple<Shaders::VertexColor3D, Shaders::VertexColor3D> m_shaders;
+    Float m_lastDepth;
+    Vector2i m_lastPosition{-1};
+    Vector3 m_rotationPoint, m_translationPoint;
 };

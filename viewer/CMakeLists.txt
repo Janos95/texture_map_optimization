@@ -1,10 +1,20 @@
 
 
 add_library(viewer
-        smart_drawable.hpp
         viewer.cpp
         viewer.hpp
-        )
+        render_target.cpp
+        render_target.hpp
+        scene_graph_node.cpp
+        scene_graph_node.hpp
+        compile_open_mesh.cpp
+        compile_open_mesh.hpp
+        scene.hpp
+        scene.cpp
+        render_pass.hpp
+        object.hpp
+        camera.hpp
+        render_pass.cpp)
 
 target_include_directories(viewer PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(viewer
@@ -15,7 +25,8 @@ target_link_libraries(viewer
             Magnum::SceneGraph
             Magnum::Application
             Magnum::Shaders
-           # tmo::shaders
+            Magnum::EglContext
+            tmo::shaders
         )
 
 
