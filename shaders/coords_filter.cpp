@@ -35,11 +35,11 @@ CoordsFilterShader::CoordsFilterShader()
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
     m_coordsTextureUniform = uniformLocation("transformationProjectionMatrix");
+    m_thresholdUniform = uniformLocation("threshold");
 
     setUniform(uniformLocation("depthTexture"), DepthTextureLayer);
     setUniform(uniformLocation("coordsTexture"), CoordsTextureLayer);
 }
-
 
 CoordsFilterShader& CoordsFilterShader::bindDepthTexture(GL::Texture2D& depth){
     depth.bind(DepthTextureLayer);
@@ -48,6 +48,17 @@ CoordsFilterShader& CoordsFilterShader::bindDepthTexture(GL::Texture2D& depth){
 
 CoordsFilterShader& CoordsFilterShader::bindCoordsTexture(GL::Texture2D& coords){
     coords.bind(CoordsTextureLayer);
-    coords.size
     return *this;
+}
+
+CoordsFilterShader& CoordsFilterShader::setTextureSize(const VectorTypeFor<2, Int>& size){
+    setUniform(m_texelHightOffsetUniform, 1.f / size[1]);
+    setUniform(m_texelWidthOffsetUniform, 1.f / size[0]);
+}
+
+CoordsFilterShader &CoordsFilterShader::setThreshold(const Matrix4 &proj, const float threshold) {
+    auto p = proj * Vector4(0,0,threshold, 1);
+    auto ndc = p.xyz() / p.w();
+    auto window = (ndc.z() + 1.f) / 2.;
+    setUniform(m_thresholdUniform, window);
 }

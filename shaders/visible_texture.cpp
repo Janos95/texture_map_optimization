@@ -30,4 +30,16 @@ VisibleTextureShader::VisibleTextureShader() {
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
     m_transformationProjectionMatrixUniform = uniformLocation("transformationProjectionMatrix");
+    m_textureSizeUniform = uniformLocation("textureSize");
 }
+
+VisibleTextureShader& VisibleTextureShader::setTransformationProjectionMatrix(const Matrix4& matrix) {
+    setUniform(m_transformationProjectionMatrixUniform, matrix);
+    return *this;
+}
+
+VisibleTextureShader& VisibleTextureShader::setTextureSize(const VectorTypeFor<2, Int>& size) {
+    setUniform(m_textureSizeUniform, size);
+    return *this;
+}
+

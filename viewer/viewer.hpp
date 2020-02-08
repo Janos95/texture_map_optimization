@@ -7,7 +7,6 @@
 
 #include "compile_open_mesh.hpp"
 #include "scene.hpp"
-#include "render_pass.hpp"
 #include "../mesh.hpp"
 
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
@@ -40,9 +39,11 @@ using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 
 class Viewer: public Platform::Application {
 public:
-    explicit Viewer(const Arguments& arguments, Scene& scene);
+    explicit Viewer();
 
     std::vector<std::function<void(Scene&)>> callbacks;
+    Scene scene;
+
 private:
 
     Float depthAt(const Vector2i& windowPosition);
@@ -54,10 +55,10 @@ private:
     void mouseScrollEvent(MouseScrollEvent& event) override;
     void drawEvent() override;
 
-    Scene& m_scene;
-    RenderPass m_renderer;
 
     Float m_lastDepth;
     Vector2i m_lastPosition{-1};
     Vector3 m_rotationPoint, m_translationPoint;
+
+    int m_dummy = 1;
 };

@@ -24,6 +24,7 @@ find_package(Magnum CONFIG REQUIRED
         AnyImageImporter
         Sdl2Application
         EglContext)
+find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
 
 

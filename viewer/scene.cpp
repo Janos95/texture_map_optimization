@@ -10,22 +10,28 @@ Scene::Scene(): m_cameraObject(&m_scene), m_camera(m_cameraObject){
 }
 
 
+const Object3D& Scene::cameraObject() const {
+    return m_cameraObject;
+}
+
 Object3D& Scene::cameraObject(){
     return m_cameraObject;
+}
+
+const SceneGraph::Camera3D& Scene::camera() const {
+    return m_camera;
 }
 
 SceneGraph::Camera3D& Scene::camera(){
     return m_camera;
 }
-
-Matrix4 projectionMatrixFromCameraParameters(float fx, float fy, float cx, float cy, float H, float W){
+Matrix4 projectionMatrixFromCameraParameters(float fx, float fy, float cx, float cy, float W, float H){
 
     // Source: https://blog.noctua-software.com/opencv-opengl-projection-matrix.html
 
     // far and near
     constexpr float f = 10.0f;
     constexpr float n = 0.01;
-
 
     const float L = -cx * n / fx;
     const float R = (W-cx) * n / fx;

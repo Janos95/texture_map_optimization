@@ -7,12 +7,11 @@
 
 #include "viewer.hpp"
 #include "cost.hpp"
-#include "render_pass.hpp"
-#include "render_target.hpp"
 #include "../mesh.hpp"
 
 #include <Corrade/Containers/ArrayView.h>
 
+#include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/PixelFormat.h>
@@ -70,39 +69,13 @@ cv::Vec4d compressCameraMatrix(Matrix3& cameraMatrix)
 }
 
 
-
-
-
-void filterDepthDiscontinuities(MutableImageView2D img, ImageView2D depth, float threshold);
 cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices();
 
 class TextureMapOptimization
 {
-    TextureMapOptimization(Mesh&, std::vector<Frame>&, Matrix3&, Vector2i, float);
+    TextureMapOptimization(Trade::MeshData3D& meshData, std::vector<Frame>&, Matrix3&, Vector2i, float);
 
-    cv::Mat run(Vector2i res, bool vis = false){
-
-        ceres::Solver::Options options;
-        options.linear_solver_type = ceres::SPARSE_SCHUR;
-        options.minimizer_progress_to_stdout = true;
-        options.update_state_every_iteration = true;
-        options.callbacks.push_back(m_updateTexture.get());
-        ceres::Solver::Summary summary;
-
-        std::thread t([&] {
-            ceres::Solve(options, &m_problem, &summary);
-        });
-
-        if(vis){
-            m_scene.reset(new Scene)
-            m_viewer = std::make_unique<Viewer>(m_scene);
-            m_viewer.callbacks.emplace_back(UpdateScene{m_texture});
-            m_viewer.exec();
-        }
-        t.join();
-
-        return m_texture.clone();
-    }
+    cv::Mat run(Vector2i res, bool vis = false);
 
 
 private:
@@ -120,7 +93,12 @@ private:
     cv::Vec4d m_camera;
 
     std::unique_ptr<Viewer> m_viewer;
-    Scene m_scene;
+
+    //This is weird. Ideally we would store the compiled mesh
+    //but this is a bit difficult since we need to share it
+    //between differen gl contexts, so for now we just compile
+    //the mesh data twice.
+    Trade::MeshData3D& m_meshData;
 
     struct UpdateTexture : public ceres::IterationCallback
     {
@@ -132,11 +110,12 @@ private:
 
             for(const auto& [x, y, visibleImages] : vis){
                 tex(y,x) = cv::Vec3f(.0f,.0f,.0f);
-                for(const int idx : visibleImages){
-                    tex(y,x) += frames[idx].image(y,x);
+                for(const auto& photoCost : visibleImages){
+                    tex(y,x) += frames[photoCost.idx].image(y,x);
                 }
                 tex(y,x) *= 1.f/visibleImages.size();
             }
+            return ceres::CallbackReturnType::SOLVER_CONTINUE;
         }
     };
 
@@ -150,7 +129,10 @@ private:
             CORRADE_INTERNAL_ASSERT(obj != nullptr);
 
             int H = tex.rows, W = tex.cols;
-            ImageView2D image(PixelFormat::RGB32F, {H, W}, Containers::ArrayView<float>((float*)tex.data, 3*H*W));
+            Containers::Array<Vector3> imageData(W*H); //TODO: pretty unnecessary copy...
+            std::transform(tex.begin(), tex.end(), imageData.begin()
+                    , [](const auto& v){ return Vector3(v[0],v[1], v[2]); });
+            ImageView2D image(PixelFormat::RGB32F, {H, W}, imageData);
 
             GL::Texture2D texture;
             texture.setWrapping(GL::SamplerWrapping::ClampToEdge)
@@ -158,7 +140,7 @@ private:
                     .setMinificationFilter(GL::SamplerFilter::Linear)
                     .setStorage(1, GL::textureFormat(image.format()), image.size())
                     .setSubImage(0, {}, image);
-            obj->texture = texture;
+            obj->texture = std::move(texture);
         }
     };
 

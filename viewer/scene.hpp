@@ -6,6 +6,7 @@
 
 #include "scene_graph_node.hpp"
 #include "compile_open_mesh.hpp"
+#include "object.hpp"
 #include "../mesh.hpp"
 
 #include <Corrade/Containers/StridedArrayView.h>
@@ -42,29 +43,38 @@ public:
 
     Scene();
 
-    SceneGraphNode* addObject(std::string name, Mesh& mesh, const ImageView2D& image)
-    {
-        auto glMesh = compileOpenMesh(mesh);
+    bool addObject(
+            std::string name,
+            Trade::MeshData3D& meshdata,
+            const Containers::Optional<ImageView2D> image = Containers::NullOpt){
+        auto mesh = MeshTools::compile(meshdata);
 
-        GL::Texture2D texture;
-        texture.setWrapping(GL::SamplerWrapping::ClampToEdge)
-            .setMagnificationFilter(GL::SamplerFilter::Linear)
-            .setMinificationFilter(GL::SamplerFilter::Linear)
-            .setStorage(1, GL::textureFormat(image.format()), image.size())
-            .setSubImage(0, {}, image);
+        Containers::Optional<GL::Texture2D> texture = Containers::NullOpt;
 
-        auto [it, inserted] = m_objects.emplace(std::move(name), Object{std::move(glMesh), std::move(texture)});
+        if(image)
+        {
+            texture = GL::Texture2D{};
+            texture->setWrapping(GL::SamplerWrapping::ClampToEdge)
+                    .setMagnificationFilter(GL::SamplerFilter::Linear)
+                    .setMinificationFilter(GL::SamplerFilter::Linear)
+                    .setStorage(1, GL::textureFormat(image->format()), image->size())
+                    .setSubImage(0, {}, *image);
+        }
+
+        Object object{
+            std::move(mesh),
+            std::move(texture),
+            Color4::cyan()};
+
+        auto [it, inserted] = m_objects.emplace(std::move(name), std::move(object));
         if(!inserted)
-            return nullptr;
+            return false;
 
-        auto drawable = new SceneGraphNode(&m_scene, DefaultCallback(it->second), &m_drawableGroup);
-        m_callbackHandles.push_back(drawable);
-        return drawable;
+        auto& obj = it->second;
+        //TODO obj.node = std::make_unique<SceneGraphNode>(&m_scene, DefaultCallback(obj), &m_drawableGroup);
+        return true;
     }
 
-    auto addObject(std::string name, Object&& object){
-        m_objects.emplace(std::move(name), std::move(object));
-    }
 
     Object* getObject(std::string_view name){
         auto it = m_objects.find(name);
@@ -74,15 +84,16 @@ public:
            return &(it->second);
     }
 
+    const Object3D& cameraObject() const;
+
     Object3D& cameraObject();
+
+    const SceneGraph::Camera3D& camera() const;
+
     SceneGraph::Camera3D& camera();
-
-
-
 
 private:
 
-    friend RenderPass;
     friend Viewer;
 
     Scene3D m_scene;

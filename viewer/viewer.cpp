@@ -21,9 +21,8 @@ using namespace Magnum;
 using namespace Math::Literals;
 
 
-Viewer::Viewer(Scene& scene):
-        Platform::Application{NoCreate},
-        m_scene(scene)
+Viewer::Viewer():
+        Platform::Application{{m_dummy,nullptr}, NoCreate}
 {
     /* Try 8x MSAA, fall back to zero samples if not possible. Enable only 2x
        MSAA if we have enough DPI. */
@@ -43,8 +42,8 @@ Viewer::Viewer(Scene& scene):
 
 
     /* Set up the camera */
-    auto& camera = m_scene.camera();
-    auto& cameraObject = m_scene.cameraObject();
+    auto& camera = scene.camera();
+    auto& cameraObject = scene.cameraObject();
     cameraObject.resetTransformation()
             .translate(Vector3::zAxis(5.0f))
             .rotateX(-15.0_degf)
@@ -84,7 +83,7 @@ Vector3 Viewer::unproject(const Vector2i& windowPosition, Float depth) const {
 
         (m_scene.cameraObject().absoluteTransformationMatrix()*_camera->projectionMatrix().inverted()).transformPoint(in)
     */
-    return m_scene.camera().projectionMatrix().inverted().transformPoint(in);
+    return scene.camera().projectionMatrix().inverted().transformPoint(in);
 }
 
 
@@ -93,7 +92,7 @@ Vector3 Viewer::unproject(const Vector2i& windowPosition, Float depth) const {
 void Viewer::keyPressEvent(KeyEvent& event) {
     /* Reset the transformation to the original view */
     if(event.key() == KeyEvent::Key::NumZero) {
-        m_scene.cameraObject()
+        scene.cameraObject()
                 .resetTransformation()
                 .translate(Vector3::zAxis(5.0f))
                 .rotateX(-15.0_degf)
@@ -107,7 +106,7 @@ void Viewer::keyPressEvent(KeyEvent& event) {
               event.key() == KeyEvent::Key::NumSeven)
     {
         /* Start with current camera translation with the rotation inverted */
-        const Vector3 viewTranslation = m_scene.cameraObject().transformation().rotationScaling().inverted()*m_scene.cameraObject().transformation().translation();
+        const Vector3 viewTranslation = scene.cameraObject().transformation().rotationScaling().inverted()*scene.cameraObject().transformation().translation();
 
         /* Front/back */
         const Float multiplier = event.modifiers() & KeyEvent::Modifier::Ctrl ? -1.0f : 1.0f;
@@ -121,7 +120,7 @@ void Viewer::keyPressEvent(KeyEvent& event) {
             transformation = Matrix4::rotationY(90.0_degf*multiplier);
         else CORRADE_ASSERT_UNREACHABLE();
 
-        m_scene.cameraObject().setTransformation(transformation*Matrix4::translation(viewTranslation));
+        scene.cameraObject().setTransformation(transformation*Matrix4::translation(viewTranslation));
         redraw();
     }
 }
@@ -155,11 +154,11 @@ void Viewer::mouseMoveEvent(MouseMoveEvent& event) {
     /* Translate */
     if(event.modifiers() & MouseMoveEvent::Modifier::Shift) {
         const Vector3 p = unproject(event.position(), m_lastDepth);
-        m_scene.cameraObject().translateLocal(m_translationPoint - p); /* is Z always 0? */
+        scene.cameraObject().translateLocal(m_translationPoint - p); /* is Z always 0? */
         m_translationPoint = p;
 
         /* Rotate around rotation point */
-    } else m_scene.cameraObject().transformLocal(
+    } else scene.cameraObject().transformLocal(
                 Matrix4::translation(m_rotationPoint)*
                 Matrix4::rotationX(-0.01_radf*delta.y())*
                 Matrix4::rotationY(-0.01_radf*delta.x())*
@@ -183,16 +182,19 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
     if(!direction) return;
 
     /* Move towards/backwards the rotation point in cam coords */
-    m_scene.cameraObject().translateLocal(m_rotationPoint*direction*0.1f);
+    scene.cameraObject().translateLocal(m_rotationPoint*direction*0.1f);
 
     event.setAccepted();
     redraw();
 }
 
 void Viewer::drawEvent() {
+    for(auto& cb: callbacks)
+        cb(scene);
+
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth);
 
-    m_scene.camera().draw(m_scene.m_drawableGroup);
+    scene.camera().draw(scene.m_drawableGroup);
 
     swapBuffers();
 }

@@ -20,23 +20,14 @@
 #include <Magnum/Platform/GLContext.h>
 
 
-cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Mesh& mesh, const int H, const int W){
-
-    //copy face indices into contigous storage
-    std::vector<UnsignedInt> indices;
-    indices.reserve(mesh.n_faces());
-    for(auto it = mesh.faces_begin(); it != mesh.faces_end(); ++it){
-        for(const auto& v: it->vertices()) {
-            indices.push_back(v.idx());
-        }
-    }
+cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Trade::MeshData3D& meshData, const int H, const int W){
 
     //construct opengl mesh with vertices and texture coordinates swapped
     GL::Mesh glmesh;
-    Containers::ArrayView<const Vector2> textureCoords(mesh.texcoords2D(), mesh.n_vertices());
-    Containers::ArrayView<const Vector3> vertices(mesh.points(), mesh.n_vertices());
+    Containers::ArrayView<const Vector2> textureCoords = meshData.textureCoords2D(0);
+    Containers::ArrayView<const Vector3> vertices = meshData.positions(0);
     auto interleaved = MeshTools::interleave(textureCoords, vertices);
-    const auto& [indexData, indexType, indexStart, indexEnd] = MeshTools::compressIndices(indices);
+    const auto& [indexData, indexType, indexStart, indexEnd] = MeshTools::compressIndices(meshData.indices());
 
     using Position = InterpolateVerticesShader::Position;
     using Vertex = InterpolateVerticesShader::Vertex;
@@ -47,7 +38,7 @@ cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Mesh& mesh, const int H, con
 
 
     //prepare offline rendering using interpolation shader
-    GL::Texture2D interpolatedVertices;
+    GL::Texture2D interpolatedVertices; //TODO: this could be a renderbuffer
     interpolatedVertices.setStorage(0, GL::TextureFormat::RGB32F, {W,H});
     GL::Framebuffer framebuffer{{{}, {W,H}}};
     auto vertexAttachment = GL::Framebuffer::ColorAttachment{0};
@@ -66,13 +57,13 @@ cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Mesh& mesh, const int H, con
 }
 
 void visibleTextureCoords(
-        const Mesh& mesh,
+        GL::Mesh& mesh,
         const Matrix4& tf,
         const Matrix4& proj,
+        const float threshold,
         cv::Mat_<cv::Vec2i>& coords)
 {
     auto W = coords.cols, H = coords.rows;
-    auto glmesh = compileOpenMesh(mesh);
 
     //render texture visibility
     GL::Framebuffer coordsFramebuffer{{{}, {W,H}}};
@@ -90,8 +81,9 @@ void visibleTextureCoords(
     coordsFramebuffer.bind();
 
     VisibleTextureShader visibiltyShader;
-    visibiltyShader.setTransformationProjectionMatrix(proj * tf);
-    glmesh.draw(visibiltyShader);
+    visibiltyShader.setTransformationProjectionMatrix(proj * tf)
+                   .setTextureSize({W,H});
+    mesh.draw(visibiltyShader);
 
     //setup framebuffer for depth unprojection
     GL::Framebuffer filteredCoordsBuffer{{{}, {W,H}}};
@@ -101,35 +93,40 @@ void visibleTextureCoords(
     filteredCoordsBuffer.bind();
 
     CoordsFilterShader filterShader;
-    filterShader.setFilterSize(W,H);
+    filterShader.setTextureSize({W,H})
+                .setThreshold(proj, threshold)
+                .bindCoordsTexture(coordTexture)
+                .bindDepthTexture((depthTexture));
+
     GL::Mesh{}.setCount(3).draw(filterShader);
 
-
-    //read texture coordinates into opencv matrix
+    //download filtered coords to host
     Containers::Array<Vector2i> data(W*H*2);
     auto coordView = MutableImageView2D{PixelFormat::RG32I, {W, H}, data};
-    coordsFramebuffer.mapForRead(coordsAttachment).read(coordsFramebuffer.viewport(), coordView);
+    coordsFramebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0}).read(coordsFramebuffer.viewport(), coordView);
 
+    //copy data into opencv matrix
     auto pixel = coordView.pixels();
-    std::transform(pixel.begin(), pixel.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v.data()); });
-    Containers::Array<Vector2i> data(W*H*2);
+    std::transform(pixel.begin(), pixel.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });
 }
 
 
-
 TextureMapOptimization::TextureMapOptimization(
-        Mesh& mesh,
+        Trade::MeshData3D& mesh,
         std::vector<Frame>& frames,
         Matrix3& cameraMatrix,
         Vector2i res,
         float depthThreshold):
     m_frames(frames),
     m_texture(res[1], res[0]),
-    m_camera(compressCameraMatrix(cameraMatrix))
+    m_camera(compressCameraMatrix(cameraMatrix)),
+    m_meshData(mesh)
 {
     Platform::WindowlessGLContext glContext{{}};
     glContext.makeCurrent();
     Platform::GLContext context;
+
+    auto glmesh = MeshTools::compile(mesh);
 
     auto frameH = frames.front().image.rows;
     auto frameW = frames.front().image.cols;
@@ -140,13 +137,12 @@ TextureMapOptimization::TextureMapOptimization(
     m_visibility.resize(texH*texW);
 
     auto proj = projectionMatrixFromCameraParameters(cameraMatrix, frameW, frameH);
-    Camera cam{Matrix4{Math::IdentityInit}, proj};
 
     for(std::size_t i = 0; i < frames.size(); ++i){
         const auto& frame = frames[i];
 
         cv::Mat_<cv::Vec2i> coords(frameH, frameW);
-        visibleTextureCoords(mesh, frame.tf, proj, coords);
+        visibleTextureCoords(glmesh, frame.tf, proj, depthThreshold, coords);
 
         auto begin = coords.begin(), end = coords.end();
         std::sort(begin, end);
@@ -164,7 +160,7 @@ TextureMapOptimization::TextureMapOptimization(
         }
     }
 
-    //remove unused texture pixels from visibility information
+    //remove nowhere visible texture pixels from visibility information
     auto it = std::remove_if(m_visibility.begin(), m_visibility.end(),
             [](const auto& pix){ return pix.visibleImages.empty(); });
     m_visibility.erase(it, m_visibility.end());
@@ -178,7 +174,35 @@ TextureMapOptimization::TextureMapOptimization(
             auto* cost =  new ceres::AutoDiffCostFunction<TexturePixelCost, 3 /*rgb*/, 3 /*rvec*/, /*tvec*/3, /*cam*/ 4>(functor);
             m_problem.AddResidualBlock(cost, nullptr, m_texture(y,x).val, frame.rvec.val, frame.tvec.val, m_camera.val);
         }
-
     }
-
 }
+
+
+
+
+cv::Mat TextureMapOptimization::run(Vector2i res, bool vis){
+    (*m_updateTexture)(ceres::IterationSummary{});
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
+    options.update_state_every_iteration = true;
+    options.callbacks.push_back(m_updateTexture.get());
+    ceres::Solver::Summary summary;
+
+    std::thread t([&] {
+        ceres::Solve(options, &m_problem, &summary);
+    });
+
+    if(vis){
+        m_viewer = std::make_unique<Viewer>();
+        m_viewer->scene.addObject("mesh", m_meshData);
+        m_viewer->callbacks.emplace_back(UpdateScene{m_texture});
+        m_viewer->exec();
+    }
+    t.join();
+
+    return m_texture.clone();
+}
+
+

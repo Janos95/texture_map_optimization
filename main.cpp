@@ -1,11 +1,10 @@
 
 
 #include "viewer.hpp"
-#include "smart_drawable.hpp"
 #include "glob.h"
 #include "load_poses.hpp"
-#include "render_pass.hpp"
 #include "camera.hpp"
+#include "load_mesh_data.hpp"
 
 #include <OpenMesh/Core/IO/MeshIO.hh>
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
@@ -49,8 +48,11 @@ Camera primesenseCamera()
     auto fy = 525.0f;
     auto cx = 319.5f;
     auto cy = 239.5f;
-    auto proj = projectionMatrixFromCameraParameters(525.f,525.f,319.5f, 239.5f, 640, 480);
+    Matrix3 cameraMatrix =
+            {{fx, 0, 0}, {0, fy, 0}, {cx, cy, 0}};
+    auto proj = projectionMatrixFromCameraParameters(cameraMatrix, 640, 480);
     Camera camera{Matrix4{}, proj};
+    return camera;
 }
 
 Matrix3 primeSenseCameraMatrix()
@@ -100,21 +102,11 @@ int main(int argc, char** argv) {
 
     Utility::Debug{} << camera.projection;
 
-    Mesh mesh;
-    mesh.request_vertex_texcoords2D();
-    OpenMesh::IO::Options opt;
-    opt += OpenMesh::IO::Options::VertexTexCoord;
-    if(!OpenMesh::IO::read_mesh(
-            mesh,
-            "/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated.obj",
-            opt)){
-        std::cout << "Could not load mesh" << std::endl;
-        std::exit(1);
-    }
+    auto meshdata = loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
 
-    assert(mesh.has_vertex_texcoords2D());
-
-    std::cout << mesh.n_faces() << std::endl;
+    Viewer viewer;
+    viewer.scene.addObject("mesh", *meshdata);
+    viewer.exec();
     //auto imagePaths = glob("/home/janos/shots/simon/crane_part1/rgb", ".*\\.png");
     //std::sort(imagePaths.begin(), imagePaths.end());
 
@@ -130,10 +122,9 @@ int main(int argc, char** argv) {
     //auto mesh = meshImporter->mesh3D(0);
  //   mesh->indices().clear();
 
-
-    Containers::Array<char> data(512 * 512 * 4);
-    cv::Mat img(512, 512, CV_8UC4, data.data());
-    img = cv::Scalar(100, 100, 100);
+//    Containers::Array<char> data(512 * 512 * 4);
+//    cv::Mat img(512, 512, CV_8UC4, data.data());
+//    img = cv::Scalar(100, 100, 100);
 
 //    std::random_device dev;
 //    std::default_random_engine gen(dev());

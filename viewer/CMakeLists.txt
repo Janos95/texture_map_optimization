@@ -3,18 +3,14 @@
 add_library(viewer
         viewer.cpp
         viewer.hpp
-        render_target.cpp
-        render_target.hpp
         scene_graph_node.cpp
         scene_graph_node.hpp
         compile_open_mesh.cpp
         compile_open_mesh.hpp
         scene.hpp
         scene.cpp
-        render_pass.hpp
         object.hpp
-        camera.hpp
-        render_pass.cpp)
+        camera.hpp)
 
 target_include_directories(viewer PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(viewer
