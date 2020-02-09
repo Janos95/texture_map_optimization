@@ -5,8 +5,8 @@ add_library(viewer
         viewer.hpp
         scene_graph_node.cpp
         scene_graph_node.hpp
-        compile_open_mesh.cpp
-        compile_open_mesh.hpp
+        ../mesh/compile_open_mesh.cpp
+        ../mesh/compile_open_mesh.hpp
         scene.hpp
         scene.cpp
         object.hpp
@@ -21,7 +21,7 @@ target_link_libraries(viewer
             Magnum::SceneGraph
             Magnum::Application
             Magnum::Shaders
-            Magnum::EglContext
+            Folly::folly
             tmo::shaders
         )
 

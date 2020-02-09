@@ -9,6 +9,7 @@ find_package(OpenMesh CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(OpenCV CONFIG REQUIRED core imgproc calib3d)
 find_package(Ceres CONFIG REQUIRED)
+find_package(Folly CONFIG REQUIRED)
 
 
 find_package(Corrade CONFIG REQUIRED
@@ -23,9 +24,10 @@ find_package(Magnum CONFIG REQUIRED
         AnySceneImporter
         AnyImageImporter
         Sdl2Application
+        WindowlessEglApplication
         EglContext)
-find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
+find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
 
 add_subdirectory(io)

@@ -60,8 +60,12 @@ struct PhotometricCost : public ceres::SizedCostFunction<3,1,1>
     const cv::Vec3f& c;
 };
 
-struct TexturePixelCost
+struct TexturePixelFunctor
 {
+    TexturePixelFunctor(const cv::Vec3f& p, PhotometricCost* cost): ip(p), photoCost(cost)
+    {
+    }
+
     template <typename T>
     bool operator()(const T* rvec, const T* tvec, const T* camera, T* residuals) const {
         T p[3] = {T(ip[0]), T(ip[1]), T(ip[2])};
@@ -87,7 +91,7 @@ struct TexturePixelCost
     }
 
     const cv::Vec3f ip;
-    const PhotometricCost& photometricCosts;
+    const ceres::CostFunctionToFunctor<3, 1, 1> photoCost;
 };
 
 

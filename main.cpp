@@ -5,11 +5,8 @@
 #include "load_poses.hpp"
 #include "camera.hpp"
 #include "load_mesh_data.hpp"
+#include "optimization.hpp"
 
-#include <OpenMesh/Core/IO/MeshIO.hh>
-#include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
-#include <OpenMesh/Core/Mesh/Traits.hh>
-#include <OpenMesh/Core/Mesh/SmartHandles.hh>
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/MeshData3D.h>
@@ -50,7 +47,7 @@ Camera primesenseCamera()
     auto cy = 239.5f;
     Matrix3 cameraMatrix =
             {{fx, 0, 0}, {0, fy, 0}, {cx, cy, 0}};
-    auto proj = projectionMatrixFromCameraParameters(cameraMatrix, 640, 480);
+    auto proj = projectionMatrixFromCameraMatrix(cameraMatrix, 640.f, 480.f);
     Camera camera{Matrix4{}, proj};
     return camera;
 }
@@ -102,7 +99,7 @@ int main(int argc, char** argv) {
 
     Utility::Debug{} << camera.projection;
 
-    auto meshdata = loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
+    auto meshdata = loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated_tex.ply");
 
     Viewer viewer;
     viewer.scene.addObject("mesh", *meshdata);

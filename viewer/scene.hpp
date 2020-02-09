@@ -5,9 +5,9 @@
 #pragma once
 
 #include "scene_graph_node.hpp"
-#include "compile_open_mesh.hpp"
+#include "../mesh/compile_open_mesh.hpp"
 #include "object.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
@@ -33,10 +33,8 @@ using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
 using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 using Camera3D = SceneGraph::Camera3D;
 
-class RenderPass;
 class Viewer;
 
-Matrix4 projectionMatrixFromCameraParameters(Matrix3 cameraMatrix, float W, float H);
 
 class Scene {
 public:
@@ -46,7 +44,7 @@ public:
     bool addObject(
             std::string name,
             Trade::MeshData3D& meshdata,
-            const Containers::Optional<ImageView2D> image = Containers::NullOpt){
+            const Containers::Optional<ImageView2D>& image = Containers::NullOpt){
         auto mesh = MeshTools::compile(meshdata);
 
         Containers::Optional<GL::Texture2D> texture = Containers::NullOpt;
@@ -71,7 +69,7 @@ public:
             return false;
 
         auto& obj = it->second;
-        //TODO obj.node = std::make_unique<SceneGraphNode>(&m_scene, DefaultCallback(obj), &m_drawableGroup);
+        obj.node.reset(new SceneGraphNode(&m_scene, DefaultCallback(obj), &m_drawableGroup));
         return true;
     }
 

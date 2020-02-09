@@ -4,7 +4,7 @@
 
 using namespace Magnum;
 
-DefaultCallback::DefaultCallback(Object& object): m_mesh(&object.mesh), m_color(object.color)
+DefaultCallback::DefaultCallback(Object& object) : m_mesh(&object.mesh), m_color(object.color)
 {
     if(object.texture)
         m_texture = &(*object.texture);

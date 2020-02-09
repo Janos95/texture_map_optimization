@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../mesh.hpp"
+#include "mesh.hpp"
 
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>

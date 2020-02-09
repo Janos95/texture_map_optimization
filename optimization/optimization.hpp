@@ -7,7 +7,7 @@
 
 #include "viewer.hpp"
 #include "cost.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 #include <Corrade/Containers/ArrayView.h>
 
@@ -58,18 +58,12 @@ struct Frame
     cv::Vec3d rvec, tvec;
 };
 
-cv::Vec4d compressCameraMatrix(Matrix3& cameraMatrix)
-{
-    cv::Vec4d compressed;
-    compressed[0] = cameraMatrix[0][0];
-    compressed[1] = cameraMatrix[1][1];
-    compressed[2] = cameraMatrix[2][0];
-    compressed[3] = cameraMatrix[2][1];
-    return compressed;
-}
+cv::Vec4d compressCameraMatrix(Matrix3& cameraMatrix);
 
+Matrix4 projectionMatrixFromCameraMatrix(const Matrix3& cameraMatrix, float W, float H);
 
-cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices();
+cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Trade::MeshData3D& meshData, const int H, const int W);
+
 
 class TextureMapOptimization
 {
@@ -83,7 +77,7 @@ private:
     struct VisibilityInformation
     {
         int x,y;
-        std::vector<PhotometricCost> photometricCosts;
+        std::vector<PhotometricCost*> photometricCosts;
     };
 
     ceres::Problem m_problem;
@@ -111,7 +105,7 @@ private:
             for(const auto& [x, y, visibleImages] : vis){
                 tex(y,x) = cv::Vec3f(.0f,.0f,.0f);
                 for(const auto& photoCost : visibleImages){
-                    tex(y,x) += frames[photoCost.idx].image(y,x);
+                    tex(y,x) += frames[photoCost->idx].image(y,x);
                 }
                 tex(y,x) *= 1.f/visibleImages.size();
             }

@@ -2,8 +2,6 @@
 // Created by janos on 05.02.20.
 //
 
-
-
 #include "optimization.hpp"
 #include "visible_texture.hpp"
 #include "interpolated_vertices.hpp"
@@ -19,6 +17,51 @@
 #include <Magnum/Platform/WindowlessEglApplication.h>
 #include <Magnum/Platform/GLContext.h>
 
+
+Matrix4 projectionMatrixFromCameraMatrix(const Matrix3& cameraMatrix, float W, float H){
+
+    // Source: https://blog.noctua-software.com/opencv-opengl-projection-matrix.html
+
+    // far and near
+    constexpr float f = 10.0f;
+    constexpr float n = 0.01;
+
+    const float fx = cameraMatrix[0][0];
+    const float fy = cameraMatrix[1][1];
+    const float cx = cameraMatrix[2][0];
+    const float cy = cameraMatrix[2][1];
+
+    const float L = -cx * n / fx;
+    const float R = (W-cx) * n / fx;
+    const float T = -cy * n / fy;
+    const float B = (H-cy) * n / fy;
+
+    // Caution, this is column-major
+    // We perform an ugly hack here: We keep X and Y directions, but flip Z
+    // with respect to the usual OpenGL conventions (in line with usual
+    // computer vision practice). While we in fact keep a right-handed
+    // coordinate system all the way, OpenGL expects a left-handed NDC
+    // coordinate system. That affects triangle winding order
+    // (see render_pass.cpp)
+    Matrix4 P{
+            {2.0f*n/(R-L),         0.0f,                   0.0f, 0.0f},
+            {        0.0f, 2.0f*n/(B-T),                   0.0f, 0.0f},
+            { (R+L)/(L-R),  (T+B)/(T-B),            (f+n)/(f-n), 1.0f},
+            {        0.0f,         0.0f, (2.0f * f * n) / (n-f), 0.0f}
+    };
+
+    return P;
+}
+
+cv::Vec4d compressCameraMatrix(Matrix3& cameraMatrix)
+{
+    cv::Vec4d compressed;
+    compressed[0] = cameraMatrix[0][0];
+    compressed[1] = cameraMatrix[1][1];
+    compressed[2] = cameraMatrix[2][0];
+    compressed[3] = cameraMatrix[2][1];
+    return compressed;
+}
 
 cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Trade::MeshData3D& meshData, const int H, const int W){
 
@@ -106,8 +149,7 @@ void visibleTextureCoords(
     coordsFramebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0}).read(coordsFramebuffer.viewport(), coordView);
 
     //copy data into opencv matrix
-    auto pixel = coordView.pixels();
-    std::transform(pixel.begin(), pixel.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });
+    std::transform(data.begin(), data.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });
 }
 
 
@@ -136,17 +178,20 @@ TextureMapOptimization::TextureMapOptimization(
 
     m_visibility.resize(texH*texW);
 
-    auto proj = projectionMatrixFromCameraParameters(cameraMatrix, frameW, frameH);
+    auto proj = projectionMatrixFromCameraMatrix(cameraMatrix, frameW, frameH);
+    cv::Mat_<cv::Vec3f> ips = computeInterpolatedMeshVertices(mesh, texH, texW);
 
     for(std::size_t i = 0; i < frames.size(); ++i){
-        const auto& frame = frames[i];
+        auto& frame = frames[i];
 
         cv::Mat_<cv::Vec2i> coords(frameH, frameW);
         visibleTextureCoords(glmesh, frame.tf, proj, depthThreshold, coords);
 
         auto begin = coords.begin(), end = coords.end();
-        std::sort(begin, end);
-        end = std::unique(begin, end);
+        std::sort(begin, end,
+                [](const auto& v1, const auto& v2){ return v1[0] < v2[0] || (v1[0] == v2[0] && v1[1] < v2[1]); });
+        end = std::unique(begin, end,
+                [](const auto& v1, const auto& v2){ return v1[0] == v2[0] && v1[1] == v2[1]; });
 
         for(auto it = begin; it != end; ++it){
              auto x = (*it)[0];
@@ -154,31 +199,13 @@ TextureMapOptimization::TextureMapOptimization(
              if( x < 0 || y < 0)
                  continue;
              auto& vis = m_visibility[x + texW * y];
-             vis.photometricCosts.emplace_back(i, frame.image, frame.xderiv, frame.yderiv, m_texture(y,x));
-             vis.x = x;
-             vis.y = y;
-        }
-    }
-
-    //remove nowhere visible texture pixels from visibility information
-    auto it = std::remove_if(m_visibility.begin(), m_visibility.end(),
-            [](const auto& pix){ return pix.visibleImages.empty(); });
-    m_visibility.erase(it, m_visibility.end());
-
-    //build problem
-    cv::Mat_<cv::Vec3f> ips = computeInterpolatedMeshVertices(mesh, texH, texW);
-    for(const auto& [x,y,photoCosts] : m_visibility){
-        for(const auto& photoCost: photoCosts){
-            auto& frame = frames[photoCost.idx];
-            auto* functor = new TexturePixelCost{ips(y,x), photoCost};
-            auto* cost =  new ceres::AutoDiffCostFunction<TexturePixelCost, 3 /*rgb*/, 3 /*rvec*/, /*tvec*/3, /*cam*/ 4>(functor);
-            m_problem.AddResidualBlock(cost, nullptr, m_texture(y,x).val, frame.rvec.val, frame.tvec.val, m_camera.val);
+             auto photoCost = new PhotometricCost(i, frame.image, frame.xderiv, frame.yderiv, m_texture(y,x));
+             auto* functor = new TexturePixelFunctor(ips(y,x), photoCost);
+             auto* cost =  new ceres::AutoDiffCostFunction<TexturePixelFunctor, 3 /*rgb*/, 3 /*rvec*/, /*tvec*/3, /*cam*/ 4>(functor);
+             m_problem.AddResidualBlock(cost, nullptr, m_texture(y,x).val, frame.rvec.val, frame.tvec.val, m_camera.val);
         }
     }
 }
-
-
-
 
 cv::Mat TextureMapOptimization::run(Vector2i res, bool vis){
     (*m_updateTexture)(ceres::IterationSummary{});

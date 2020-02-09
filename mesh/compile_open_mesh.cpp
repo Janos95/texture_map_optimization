@@ -3,7 +3,7 @@
 //
 
 
-#include "../mesh.hpp"
+#include "mesh.hpp"
 
 
 #include <Magnum/MeshTools/CompressIndices.h>

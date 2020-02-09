@@ -2,48 +2,49 @@ uniform highp sampler2D depthTexture;
 uniform highp sampler2D coordsTexture;
 uniform highp float threshold;
 
-in highp vec2 centerTextureCoordinate;
-in highp vec2 oneStepPositiveTextureCoordinate;
-in highp vec2 oneStepNegativeTextureCoordinate;
-in highp vec2 twoStepsPositiveTextureCoordinate;
-in highp vec2 twoStepsNegativeTextureCoordinate;
-in highp vec2 threeStepsPositiveTextureCoordinate;
-in highp vec2 threeStepsNegativeTextureCoordinate;
-in highp vec2 fourStepsPositiveTextureCoordinate;
-in highp vec2 fourStepsNegativeTextureCoordinate;
+out highp vec2 centerTextureCoordinate;
+out highp vec2 bottomTextureCoordinate;
+out highp vec2 topCoordinate;
+out highp vec2 rightTextureCoordinate;
+out highp vec2 leftTextureCoordinate;
+out highp vec2 topLeftTextureCoordinate;
+out highp vec2 topRightTextureCoordinate;
+out highp vec2 bottomRightTextureCoordinate;
+out highp vec2 bottomLeftTextureCoordinate;
 
 layout(location = 0) out highp ivec2 coord;
 
 void main() {
 
   float centerDepth = texture2D(depthTexture, centerTextureCoordinate).r;
-  float oneStepPositiveDepth = texture2D(depthTexture, oneStepPositiveTextureCoordinate).r;
-  float oneStepNegativeDepth = texture2D(depthTexture, oneStepNegativeTextureCoordinate).r;
-  float twoStepsPositiveDepth = texture2D(depthTexture, twoStepsPositiveTextureCoordinate).r;
-  float twoStepsNegativeDepth = texture2D(depthTexture, twoStepsNegativeTextureCoordinate).r;
-  float threeStepsPositiveDepth = texture2D(depthTexture, threeStepsPositiveTextureCoordinate).r;
-  float threeStepsNegativeDepth = texture2D(depthTexture, threeStepsNegativeTextureCoordinate).r;
-  float fourStepsPositiveDepth = texture2D(depthTexture, fourStepsPositiveTextureCoordinate).r;
-  float fourStepsNegativeDepth = texture2D(depthTexture, fourStepsNegativeTextureCoordinate).r;
+  float bottomDepth = texture2D(depthTexture, bottomTextureCoordinate).r;
+  float topDepth = texture2D(depthTexture, topTextureCoordinate).r;
+  float rightDepth = texture2D(depthTexture, rightTextureCoordinate).r;
+  float leftDepth = texture2D(depthTexture, leftTextureCoordinate).r;
+  float topLeftDepth = texture2D(depthTexture, topLeftTextureCoordinate).r;
+  float topRightDepth = texture2D(depthTexture, topRightTextureCoordinate).r;
+  float bottomLeftDepth = texture2D(depthTexture, bottomLeftTextureCoordinate).r;
+  float bottomRightDepth = texture2D(depthTexture, bottomRightTextureCoordinate).r;
 
-  highp float maxValue = max(centerDepth, oneStepPositiveDepth);
-  maxValue = max(maxValue, oneStepNegativeDepth);
-  maxValue = max(maxValue, twoStepsPositiveDepth);
-  maxValue = max(maxValue, twoStepsNegativeDepth);
-  maxValue = max(maxValue, threeStepsPositiveDepth);
-  maxValue = max(maxValue, threeStepsNegativeDepth);
-  maxValue = max(maxValue, fourStepsPositiveDepth);
-  maxValue = max(maxValue, fourStepsNegativeDepth);
+  highp float maxValue = max(centerDepth, bottomDepth);
+  maxValue = max(maxValue, topDepth);
+  maxValue = max(maxValue, rightDepth);
+  maxValue = max(maxValue, leftDepth);
+  maxValue = max(maxValue, topLeftDepth);
+  maxValue = max(maxValue, topRightDepth);
+  maxValue = max(maxValue, bottomLeftDepth);
+  maxValue = max(maxValue, bottomRightDepth);
 
 
-  highp float minValue = min(centerDepth, oneStepPositiveDepth);
-  maxValue = min(maxValue, oneStepNegativeDepth);
-  maxValue = min(maxValue, twoStepsPositiveDepth);
-  maxValue = min(maxValue, twoStepsNegativeDepth);
-  maxValue = min(maxValue, threeStepsPositiveDepth);
-  maxValue = min(maxValue, threeStepsNegativeDepth);
-  maxValue = min(maxValue, fourStepsPositiveDepth);
-  maxValue = min(maxValue, fourStepsNegativeDepth);
+  highp float minValue = min(centerDepth, bottomDepth);
+  maxValue = min(maxValue, topDepth);
+  maxValue = min(maxValue, rightDepth);
+  maxValue = min(maxValue, leftDepth);
+  maxValue = min(maxValue, topLeftDepth);
+  maxValue = min(maxValue, topRightDepth);
+  maxValue = min(maxValue, bottomRightDepth);
+  maxValue = min(maxValue, bottomLeftDepth);
+
   if(maxValue - minValue> threshold)
     coord = ivec2(-1,-1);
   else

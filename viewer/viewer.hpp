@@ -5,9 +5,9 @@
 #pragma once
 
 
-#include "compile_open_mesh.hpp"
+#include "../mesh/compile_open_mesh.hpp"
 #include "scene.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
 

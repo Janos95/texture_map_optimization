@@ -15,7 +15,7 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/GL/Mesh.h>
 
-#include <functional>
+#include <folly/Function.h>
 
 using namespace Magnum;
 using namespace Corrade;
@@ -32,6 +32,10 @@ public:
 
     explicit DefaultCallback(Object& object);
 
+    DefaultCallback(DefaultCallback&&) noexcept = default;
+
+    DefaultCallback(const DefaultCallback&) = delete;
+
     void operator()(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera);
 
 private:
@@ -45,11 +49,11 @@ private:
 class SceneGraphNode : public Drawable3D, Object3D {
 public:
 
-    using callback_type = std::function<void(const Matrix4&, SceneGraph::Camera3D&)>;
+    using callback_type = folly::Function<void(const Matrix4&, SceneGraph::Camera3D&)>;
 
     explicit SceneGraphNode(Object3D* parent, callback_type&& callback, SceneGraph::DrawableGroup3D* group);
 
-    void setDrawCallback(const callback_type& callback){ m_callback = callback; }
+    void setDrawCallback(callback_type&& callback){ m_callback = std::move(callback); }
 
 protected:
 
