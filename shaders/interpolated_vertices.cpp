@@ -13,7 +13,7 @@
 InterpolateVerticesShader::InterpolateVerticesShader() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
-    const Utility::Resource rs{"interpolated-vertices-data"};
+    const Utility::Resource rs{"TextureMapOptimizationShaders"};
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};

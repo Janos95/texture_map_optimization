@@ -40,8 +40,8 @@ public:
 
 private:
 
-    GL::Mesh* m_mesh;
-    GL::Texture2D* m_texture;
+    GL::Mesh* m_mesh = nullptr;
+    GL::Texture2D* m_texture = nullptr;
     Color4 m_color;
     Shaders::Flat3D m_shader;
 };

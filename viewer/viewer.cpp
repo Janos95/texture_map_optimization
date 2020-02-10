@@ -6,10 +6,6 @@
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
-#include <Magnum/SceneGraph/Camera.h>
-#include <Magnum/SceneGraph/Drawable.h>
-#include <Magnum/SceneGraph/MatrixTransformation3D.h>
-#include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/GL/PixelFormat.h>
@@ -39,7 +35,6 @@ Viewer::Viewer():
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-
 
     /* Set up the camera */
     auto& camera = scene.camera();

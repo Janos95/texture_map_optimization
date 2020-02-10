@@ -1,9 +1,8 @@
 
 
-
 corrade_add_resource(TMO_Rcs resources.conf)
 
-add_library(shaders
+add_library(shaders SHARED
     coords_filter.cpp
     coords_filter.hpp
     interpolated_vertices.hpp

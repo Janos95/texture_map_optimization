@@ -4,21 +4,24 @@
 
 using namespace Magnum;
 
-DefaultCallback::DefaultCallback(Object& object) : m_mesh(&object.mesh), m_color(object.color)
+DefaultCallback::DefaultCallback(Object& object) :
+    m_mesh(&object.mesh),
+    m_color(object.color),
+    m_shader(object.texture ? Shaders::Flat3D::Flag::Textured : Shaders::Flat3D::Flag{})
 {
-    if(object.texture)
-        m_texture = &(*object.texture);
+    if(object.texture){
+        m_texture = std::addressof(*object.texture);
+    }
 }
 
 void DefaultCallback::operator()(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera){
-    static Shaders::Flat3D shader;
-    shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformationMatrix);
+    m_shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformationMatrix);
 
     if (m_texture) {
-        shader.bindTexture(*m_texture);
+        m_shader.bindTexture(*m_texture);
     }
     else{
-        shader.setColor(m_color);
+        m_shader.setColor(m_color);
     }
 
     CORRADE_INTERNAL_ASSERT(m_mesh);

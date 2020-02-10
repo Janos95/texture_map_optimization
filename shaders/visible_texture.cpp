@@ -13,7 +13,7 @@
 VisibleTextureShader::VisibleTextureShader() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
-    const Utility::Resource rs{"visible-texture-data"};
+    Utility::Resource rs{"tmo-data"};
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};

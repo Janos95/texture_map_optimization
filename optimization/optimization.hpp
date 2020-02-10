@@ -64,6 +64,7 @@ Matrix4 projectionMatrixFromCameraMatrix(const Matrix3& cameraMatrix, float W, f
 
 cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Trade::MeshData3D& meshData, const int H, const int W);
 
+void visibleTextureCoords(GL::Mesh& mesh, const Matrix4& tf, const Matrix4& proj, const float threshold, cv::Mat_<cv::Vec2i>& coords);
 
 class TextureMapOptimization
 {

@@ -7,7 +7,8 @@
 #include "load_mesh_data.hpp"
 #include "optimization.hpp"
 
-
+#include <Magnum/Platform/GLContext.h>
+#include <Magnum/Platform/WindowlessEglApplication.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -17,6 +18,7 @@
 #include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/PixelFormat.h>
+#include <Magnum/MeshTools/Compile.h>
 
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/Optional.h>
@@ -101,9 +103,42 @@ int main(int argc, char** argv) {
 
     auto meshdata = loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated_tex.ply");
 
+    Containers::Array<char> data(480 * 640 * sizeof(Color4));
+    Image2D texture(PixelFormat::RGBA32F, {640,480}, std::move(data));
+
+    {
+        Platform::WindowlessGLContext glContext{{}};
+        glContext.makeCurrent();
+        Platform::GLContext context;
+
+        GL::Mesh mesh = MeshTools::compile(*meshdata);
+        cv::Mat_<cv::Vec2i> visible(480, 640, cv::Vec2i(-1,-1));
+        visibleTextureCoords(mesh, camera.transformation, camera.transformation, 0.01, visible);
+
+        auto pixels = texture.pixels<Color4>();
+        for (int x = 0; x < 640; ++x) {
+            for (int y = 0; y < 480; ++y) {
+                int a = visible(y,x)[0];
+                int b = visible(y,x)[1];
+                if(a < 0 || b < 0)
+                    continue;
+                pixels[a][b] = Color4::red();
+            }
+        }
+    }
+
+
     Viewer viewer;
-    viewer.scene.addObject("mesh", *meshdata);
+    viewer.scene.addObject("mesh", *meshdata, {texture});
     viewer.exec();
+
+
+
+
+
+
+
+
     //auto imagePaths = glob("/home/janos/shots/simon/crane_part1/rgb", ".*\\.png");
     //std::sort(imagePaths.begin(), imagePaths.end());
 

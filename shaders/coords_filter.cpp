@@ -18,7 +18,7 @@ CoordsFilterShader::CoordsFilterShader()
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
-    const Utility::Resource rs{"visible-texture-data"};
+    const Utility::Resource rs{"TextureMapOptimizationShaders"};
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};
@@ -54,6 +54,7 @@ CoordsFilterShader& CoordsFilterShader::bindCoordsTexture(GL::Texture2D& coords)
 CoordsFilterShader& CoordsFilterShader::setTextureSize(const VectorTypeFor<2, Int>& size){
     setUniform(m_texelHightOffsetUniform, 1.f / size[1]);
     setUniform(m_texelWidthOffsetUniform, 1.f / size[0]);
+    return *this;
 }
 
 CoordsFilterShader &CoordsFilterShader::setThreshold(const Matrix4 &proj, const float threshold) {
@@ -61,4 +62,5 @@ CoordsFilterShader &CoordsFilterShader::setThreshold(const Matrix4 &proj, const 
     auto ndc = p.xyz() / p.w();
     auto window = (ndc.z() + 1.f) / 2.;
     setUniform(m_thresholdUniform, window);
+    return *this;
 }
