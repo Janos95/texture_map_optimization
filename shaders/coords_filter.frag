@@ -1,30 +1,31 @@
 uniform highp sampler2D depthTexture;
-uniform highp sampler2D coordsTexture;
+uniform highp isampler2D coordsTexture;
 uniform highp float threshold;
 
-out highp vec2 centerTextureCoordinate;
-out highp vec2 bottomTextureCoordinate;
-out highp vec2 topCoordinate;
-out highp vec2 rightTextureCoordinate;
-out highp vec2 leftTextureCoordinate;
-out highp vec2 topLeftTextureCoordinate;
-out highp vec2 topRightTextureCoordinate;
-out highp vec2 bottomRightTextureCoordinate;
-out highp vec2 bottomLeftTextureCoordinate;
+
+in highp vec2 centerTextureCoordinate;
+in highp vec2 bottomTextureCoordinate;
+in highp vec2 topTextureCoordinate;
+in highp vec2 rightTextureCoordinate;
+in highp vec2 leftTextureCoordinate;
+in highp vec2 topLeftTextureCoordinate;
+in highp vec2 topRightTextureCoordinate;
+in highp vec2 bottomRightTextureCoordinate;
+in highp vec2 bottomLeftTextureCoordinate;
 
 layout(location = 0) out highp ivec2 coord;
 
 void main() {
 
-  float centerDepth = texture2D(depthTexture, centerTextureCoordinate).r;
-  float bottomDepth = texture2D(depthTexture, bottomTextureCoordinate).r;
-  float topDepth = texture2D(depthTexture, topTextureCoordinate).r;
-  float rightDepth = texture2D(depthTexture, rightTextureCoordinate).r;
-  float leftDepth = texture2D(depthTexture, leftTextureCoordinate).r;
-  float topLeftDepth = texture2D(depthTexture, topLeftTextureCoordinate).r;
-  float topRightDepth = texture2D(depthTexture, topRightTextureCoordinate).r;
-  float bottomLeftDepth = texture2D(depthTexture, bottomLeftTextureCoordinate).r;
-  float bottomRightDepth = texture2D(depthTexture, bottomRightTextureCoordinate).r;
+  float centerDepth = texture(depthTexture, centerTextureCoordinate).r;
+  float bottomDepth = texture(depthTexture, bottomTextureCoordinate).r;
+  float topDepth = texture(depthTexture, topTextureCoordinate).r;
+  float rightDepth = texture(depthTexture, rightTextureCoordinate).r;
+  float leftDepth = texture(depthTexture, leftTextureCoordinate).r;
+  float topLeftDepth = texture(depthTexture, topLeftTextureCoordinate).r;
+  float topRightDepth = texture(depthTexture, topRightTextureCoordinate).r;
+  float bottomLeftDepth = texture(depthTexture, bottomLeftTextureCoordinate).r;
+  float bottomRightDepth = texture(depthTexture, bottomRightTextureCoordinate).r;
 
   highp float maxValue = max(centerDepth, bottomDepth);
   maxValue = max(maxValue, topDepth);
@@ -46,7 +47,7 @@ void main() {
   maxValue = min(maxValue, bottomLeftDepth);
 
   if(maxValue - minValue> threshold)
-    coord = ivec2(-1,-1);
+  coord = ivec2(-1,-1);
   else
-    coord = texture(coordsTexture, textureCoordinates);
+  coord = texture(coordsTexture, centerTextureCoordinate).xy;
 }

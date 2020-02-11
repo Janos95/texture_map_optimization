@@ -5,9 +5,7 @@
 #pragma once
 
 #include "scene_graph_node.hpp"
-#include "../mesh/compile_open_mesh.hpp"
 #include "object.hpp"
-#include "../mesh/mesh.hpp"
 
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
@@ -22,9 +20,12 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
+#include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/MeshTools/Compile.h>
 
 #include <vector>
 #include <memory>
+#include <map>
 
 using namespace Corrade;
 using namespace Magnum;

@@ -1,7 +1,6 @@
 
 
 #include "viewer.hpp"
-#include "glob.h"
 #include "load_poses.hpp"
 #include "camera.hpp"
 #include "load_mesh_data.hpp"

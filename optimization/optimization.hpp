@@ -7,7 +7,6 @@
 
 #include "viewer.hpp"
 #include "cost.hpp"
-#include "../mesh/mesh.hpp"
 
 #include <Corrade/Containers/ArrayView.h>
 

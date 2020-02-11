@@ -29,7 +29,7 @@ find_package(Magnum CONFIG REQUIRED
 
 find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
-
+add_subdirectory(scoped_timer)
 add_subdirectory(io)
 add_subdirectory(shaders)
 add_subdirectory(viewer)

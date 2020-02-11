@@ -40,12 +40,20 @@ public:
     using my_duration = std::chrono::duration<long double, std::nano>;
     using time_point_t = std::chrono::time_point<my_clock>;
 
-    explicit ScopedTimer(std::string name): name_(std::move(name)), start_(my_clock::now()){}
+    explicit ScopedTimer(std::string name, bool verbose = true):
+        name_(std::move(name)), start_(my_clock::now()), verbose_(verbose)
+    {
+    }
 
     ~ScopedTimer()
     {
         const auto end = my_clock::now();
         my_duration time = end - start_;
+
+        if(verbose_){
+            using sec_dur = std::chrono::duration<long double, std::ratio<1>>;
+            fmt::print("{} took {} seconds\n", name_, sec_dur{time}.count());
+        }
 
         std::lock_guard l(mutex_);
 
@@ -87,4 +95,5 @@ private:
 
     std::string name_;
     time_point_t start_;
+    bool verbose_;
 };

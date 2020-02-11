@@ -5,11 +5,7 @@
 #pragma once
 
 
-#include "../mesh/compile_open_mesh.hpp"
 #include "scene.hpp"
-#include "../mesh/mesh.hpp"
-
-#include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
 
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
