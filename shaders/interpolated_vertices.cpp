@@ -13,7 +13,7 @@
 InterpolateVerticesShader::InterpolateVerticesShader() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
-    const Utility::Resource rs{"TextureMapOptimizationShaders"};
+    const Utility::Resource rs{"tmo-data"};
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};

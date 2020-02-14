@@ -18,15 +18,15 @@ CoordsFilterShader::CoordsFilterShader()
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
-    const Utility::Resource rs{"TextureMapOptimizationShaders"};
+    const Utility::Resource rs{"tmo-data"};
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};
 
-    vert.addSource(rs.get("generic.glsl"))
-        .addSource(rs.get("visible_texture.vert"));
+    vert//.addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("coords_filter.vert"));
 
-    frag.addSource(rs.get("visible_texture.frag"));
+    frag.addSource(rs.get("coords_filter.frag"));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));
 
@@ -34,7 +34,6 @@ CoordsFilterShader::CoordsFilterShader()
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
-    m_coordsTextureUniform = uniformLocation("transformationProjectionMatrix");
     m_thresholdUniform = uniformLocation("threshold");
 
     setUniform(uniformLocation("depthTexture"), DepthTextureLayer);

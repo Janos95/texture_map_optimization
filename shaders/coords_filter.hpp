@@ -40,8 +40,6 @@ public:
 
 
 private:
-    Int m_depthTextureUniform;
-    Int m_coordsTextureUniform;
     Int m_texelHightOffsetUniform;
     Int m_texelWidthOffsetUniform;
     Int m_thresholdUniform;

@@ -21,10 +21,12 @@ find_package(Magnum CONFIG REQUIRED
         Shaders
         SceneGraph
         Trade
+        Primitives
         AnySceneImporter
         AnyImageImporter
-        Sdl2Application
+        GlfwApplication
         WindowlessEglApplication
+        WindowlessGlxApplication
         EglContext)
 
 find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
@@ -49,8 +51,8 @@ target_link_libraries(texture_map_optimization PRIVATE
         Magnum::Trade
         Magnum::AnySceneImporter
         Magnum::AnyImageImporter
-        OpenMeshCore
-        OpenMeshTools
+        Magnum::WindowlessGlxApplication
+        Magnum::Primitives
         tmo::io
         tmo::viewer
         tmo::optimization

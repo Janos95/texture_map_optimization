@@ -14,14 +14,15 @@
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/GL/Mesh.h>
+#include <Magnum/SceneGraph/RigidMatrixTransformation3D.h>
 
 #include <folly/Function.h>
 
 using namespace Magnum;
 using namespace Corrade;
 
-using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
-using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
+using Object3D = SceneGraph::Object<SceneGraph::RigidMatrixTransformation3D>;
+using Scene3D = SceneGraph::Scene<SceneGraph::RigidMatrixTransformation3D>;
 using Drawable3D = SceneGraph::Drawable3D;
 
 struct Object;
@@ -46,7 +47,7 @@ private:
     Shaders::Flat3D m_shader;
 };
 
-class SceneGraphNode : public Drawable3D, Object3D {
+class SceneGraphNode : public Drawable3D, public Object3D {
 public:
 
     using callback_type = folly::Function<void(const Matrix4&, SceneGraph::Camera3D&)>;

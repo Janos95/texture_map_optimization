@@ -7,7 +7,7 @@
 #include "optimization.hpp"
 
 #include <Magnum/Platform/GLContext.h>
-#include <Magnum/Platform/WindowlessEglApplication.h>
+#include <Magnum/Platform/WindowlessGlxApplication.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -18,6 +18,8 @@
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Primitives/Axis.h>
+#include <Magnum/Math/Quaternion.h>
 
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/Optional.h>
@@ -32,12 +34,11 @@
 #include <iostream>
 #include <array>
 
+
 using namespace Corrade;
 using namespace Magnum;
 
 using namespace Magnum::Math::Literals;
-
-
 
 
 Camera primesenseCamera()
@@ -104,6 +105,9 @@ int main(int argc, char** argv) {
 
     Containers::Array<char> data(480 * 640 * sizeof(Color4));
     Image2D texture(PixelFormat::RGBA32F, {640,480}, std::move(data));
+    for(auto&& row: texture.pixels<Color4>())
+        for(Color4& c : row)
+            c = Color4::red();
 
     {
         Platform::WindowlessGLContext glContext{{}};
@@ -112,6 +116,7 @@ int main(int argc, char** argv) {
 
         GL::Mesh mesh = MeshTools::compile(*meshdata);
         cv::Mat_<cv::Vec2i> visible(480, 640, cv::Vec2i(-1,-1));
+        cv::Mat_<cv::Vec3b> red(480, 640, cv::Vec3b(100,0,0));
         visibleTextureCoords(mesh, camera.transformation, camera.transformation, 0.01, visible);
 
         auto pixels = texture.pixels<Color4>();
@@ -127,16 +132,14 @@ int main(int argc, char** argv) {
     }
 
 
-    Viewer viewer;
-    viewer.scene.addObject("mesh", *meshdata, {texture});
+    Viewer viewer(argc, argv);
+    viewer.scene.addObject("mesh", *meshdata, &texture);
+    viewer.scene.addObject("coords", Primitives::axis3D(), {});
+
+    viewer.scene.getObject("coords")->node->setTransformation(poses.front());
+//    viewer.scene.getObject("coords")->node->rotate().translate();
+
     viewer.exec();
-
-
-
-
-
-
-
 
     //auto imagePaths = glob("/home/janos/shots/simon/crane_part1/rgb", ".*\\.png");
     //std::sort(imagePaths.begin(), imagePaths.end());

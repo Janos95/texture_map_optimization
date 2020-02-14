@@ -6,7 +6,6 @@
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
-#include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/GL/PixelFormat.h>
 #include <Magnum/Math/FunctionsBatch.h>
@@ -17,21 +16,23 @@ using namespace Magnum;
 using namespace Math::Literals;
 
 
-Viewer::Viewer():
-        Platform::Application{{m_dummy,nullptr}, NoCreate}
+Viewer::Viewer(int argc, char** argv):
+        Platform::Application{{argc,argv}, Configuration{}
+                .setTitle("Viewer")
+                .setWindowFlags(Configuration::WindowFlag::Resizable)}
 {
     /* Try 8x MSAA, fall back to zero samples if not possible. Enable only 2x
        MSAA if we have enough DPI. */
-    {
-        const Vector2 dpiScaling = this->dpiScaling({});
-        Configuration conf;
-        conf.setTitle("Magnum Mouse Interaction Example")
-                .setSize(conf.size(), dpiScaling);
-        GLConfiguration glConf;
-        glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
-        if(!tryCreate(conf, glConf))
-            create(conf, glConf.setSampleCount(0));
-    }
+    //{
+    //    const Vector2 dpiScaling = this->dpiScaling({});
+    //    Configuration conf;
+    //    conf.setTitle("Magnum Mouse Interaction Example")
+    //            .setSize(conf.size(), dpiScaling);
+    //    GLConfiguration glConf;
+    //    glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
+    //    if(!tryCreate(conf, glConf))
+    //        create(conf, glConf.setSampleCount(0));
+    //}
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);

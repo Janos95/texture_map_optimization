@@ -10,7 +10,7 @@
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
 
-#include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/Platform/GlfwApplication.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/VertexColor.h>
@@ -35,7 +35,7 @@ using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 
 class Viewer: public Platform::Application {
 public:
-    explicit Viewer();
+    explicit Viewer(int, char**);
 
     std::vector<std::function<void(Scene&)>> callbacks;
     Scene scene;

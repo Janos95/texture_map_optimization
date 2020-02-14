@@ -2,7 +2,6 @@ uniform highp sampler2D depthTexture;
 uniform highp isampler2D coordsTexture;
 uniform highp float threshold;
 
-
 in highp vec2 centerTextureCoordinate;
 in highp vec2 bottomTextureCoordinate;
 in highp vec2 topTextureCoordinate;

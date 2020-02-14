@@ -1,5 +1,5 @@
 
-layout(location = POSITION_ATTRIBUTE_LOCATION)
+layout(location = 0)
 in highp vec4 position;
 
 uniform highp float texelWidthOffset;

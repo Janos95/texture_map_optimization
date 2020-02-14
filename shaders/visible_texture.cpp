@@ -18,7 +18,7 @@ VisibleTextureShader::VisibleTextureShader() {
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};
 
-    vert.addSource(rs.get("generic.glsl"))
+    vert//.addSource(rs.get("generic.glsl"))
         .addSource(rs.get("visible_texture.vert"));
 
     frag.addSource(rs.get("visible_texture.frag"));

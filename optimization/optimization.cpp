@@ -99,6 +99,8 @@ cv::Mat_<cv::Vec3f> computeInterpolatedMeshVertices(Trade::MeshData3D& meshData,
     return img;
 }
 
+constexpr auto CoordAttachment = GL::Framebuffer::ColorAttachment{0};
+
 void visibleTextureCoords(
         GL::Mesh& mesh,
         const Matrix4& tf,
@@ -113,11 +115,14 @@ void visibleTextureCoords(
 
     GL::Texture2D depthTexture;
     GL::Texture2D coordTexture;
-    coordTexture.setStorage(0, GL::TextureFormat::RG32I, {W,H});
-    depthTexture.setStorage(0, GL::TextureFormat::DepthComponent32F, {W,H});
+    coordTexture.setStorage(1, GL::TextureFormat::RG32I, {W,H});
+    depthTexture.setStorage(1, GL::TextureFormat::DepthComponent32F, {W,H});
 
-    coordsFramebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, coordTexture, 0)
-                     .attachTexture(GL::Framebuffer::BufferAttachment::Depth, depthTexture, 0);
+    coordsFramebuffer.attachTexture(CoordAttachment, coordTexture, 0)
+                     .attachTexture(GL::Framebuffer::BufferAttachment::Depth, depthTexture, 0)
+                     .mapForDraw(CoordAttachment);
+    CORRADE_INTERNAL_ASSERT(
+            coordsFramebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 
     coordsFramebuffer.clearDepth(1.0);
     coordsFramebuffer.clearColor(0, Vector4i(-1));
@@ -128,11 +133,11 @@ void visibleTextureCoords(
                    .setTextureSize({W,H});
     mesh.draw(visibiltyShader);
 
-    //setup framebuffer for depth unprojection
+    //setup framebuffer for depth filtering
     GL::Framebuffer filteredCoordsBuffer{{{}, {W,H}}};
     GL::Renderbuffer coordBuffer;
     coordBuffer.setStorage(GL::RenderbufferFormat::RG32I, {W,H});
-    filteredCoordsBuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, coordBuffer);
+    filteredCoordsBuffer.attachRenderbuffer(CoordAttachment, coordBuffer);
     filteredCoordsBuffer.bind();
 
     CoordsFilterShader filterShader;
@@ -144,9 +149,9 @@ void visibleTextureCoords(
     GL::Mesh{}.setCount(3).draw(filterShader);
 
     //download filtered coords to host
-    Containers::Array<Vector2i> data(W*H*2);
+    Containers::Array<Vector2i> data(W*H);
     auto coordView = MutableImageView2D{PixelFormat::RG32I, {W, H}, data};
-    coordsFramebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0}).read(coordsFramebuffer.viewport(), coordView);
+    coordsFramebuffer.mapForRead(CoordAttachment).read(coordsFramebuffer.viewport(), coordView);
 
     //copy data into opencv matrix
     std::transform(data.begin(), data.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });
@@ -222,7 +227,8 @@ cv::Mat TextureMapOptimization::run(Vector2i res, bool vis){
     });
 
     if(vis){
-        m_viewer = std::make_unique<Viewer>();
+        int dummy; //TODO: remove
+        m_viewer = std::make_unique<Viewer>(dummy, nullptr);
         m_viewer->scene.addObject("mesh", m_meshData);
         m_viewer->callbacks.emplace_back(UpdateScene{m_texture});
         m_viewer->exec();

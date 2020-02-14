@@ -23,5 +23,5 @@ struct Object
     Magnum::GL::Mesh mesh;
     Corrade::Containers::Optional<Magnum::GL::Texture2D> texture;
     Magnum::Color4 color = Magnum::Color4{1};
-    std::unique_ptr<SceneGraphNode> node;
+    SceneGraphNode* node;
 };
