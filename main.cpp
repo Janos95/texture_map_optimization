@@ -97,9 +97,10 @@ int main(int argc, char** argv) {
 
     auto poses = loadPoses<float>("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
     auto camera = primesenseCamera();
-    camera.transformation = poses.front();
+    auto proj1 = Matrix4::perspectiveProjection(45.0_degf, Vector2{640, 480}.aspectRatio(), 0.01f, 100.0f);
+    auto proj = projectionMatrixFromCameraMatrix(primeSenseCameraMatrix(), 640, 480);
 
-    Utility::Debug{} << camera.projection;
+    Utility::Debug{} << proj;
 
     auto meshdata = loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated_tex.ply");
 
@@ -117,7 +118,7 @@ int main(int argc, char** argv) {
         GL::Mesh mesh = MeshTools::compile(*meshdata);
         cv::Mat_<cv::Vec2i> visible(480, 640, cv::Vec2i(-1,-1));
         cv::Mat_<cv::Vec3b> red(480, 640, cv::Vec3b(100,0,0));
-        visibleTextureCoords(mesh, camera.transformation, camera.transformation, 0.01, visible);
+        visibleTextureCoords(mesh, poses.front(), proj1, 0.01, visible);
 
         auto pixels = texture.pixels<Color4>();
         for (int x = 0; x < 640; ++x) {
@@ -134,10 +135,9 @@ int main(int argc, char** argv) {
 
     Viewer viewer(argc, argv);
     viewer.scene.addObject("mesh", *meshdata, &texture);
-    viewer.scene.addObject("coords", Primitives::axis3D(), {});
+    //viewer.scene.addObject("coords", Primitives::axis3D());
 
-    viewer.scene.getObject("coords")->node->setTransformation(poses.front());
-//    viewer.scene.getObject("coords")->node->rotate().translate();
+    //viewer.scene.getObject("coords")->node->setTransformation(poses.front());
 
     viewer.exec();
 

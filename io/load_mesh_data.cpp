@@ -7,14 +7,14 @@
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Optional.h>
 
-#include <MagnumPlugins/AssimpImporter/AssimpImporter.h>
+#include <MagnumPlugins/AnySceneImporter/AnySceneImporter.h>
 
 using namespace Magnum;
 using namespace Corrade;
 
 Containers::Optional<Trade::MeshData3D> loadMeshData(const std::string& path){
     PluginManager::Manager<Trade::AbstractImporter> manager;
-    Containers::Pointer<Trade::AbstractImporter> importer = manager.loadAndInstantiate("AssimpImporter");
+    auto importer = manager.loadAndInstantiate("AnySceneImporter");
     if(!importer) std::exit(1);
 
     Debug{} << "Opening file" << path.c_str();

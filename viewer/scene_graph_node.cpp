@@ -4,10 +4,10 @@
 
 using namespace Magnum;
 
-DefaultCallback::DefaultCallback(Object& object) :
-    m_mesh(&object.mesh),
+DefaultCallback::DefaultCallback(Object& object, Shaders::Flat3D& shader) :
+    m_mesh(object.mesh),
     m_color(object.color),
-    m_shader(object.texture ? Shaders::Flat3D::Flag::Textured : Shaders::Flat3D::Flag{})
+    m_shader(shader)
 {
     if(object.texture){
         m_texture = std::addressof(*object.texture);
@@ -24,15 +24,14 @@ void DefaultCallback::operator()(const Matrix4& transformationMatrix, SceneGraph
         m_shader.setColor(m_color);
     }
 
-    CORRADE_INTERNAL_ASSERT(m_mesh);
-    m_mesh->draw(m_shader);
+    m_mesh.draw(m_shader);
 }
 
 
-SceneGraphNode::SceneGraphNode(Object3D* parent, callback_type&& callback, SceneGraph::DrawableGroup3D* group):
+SceneGraphNode::SceneGraphNode(Object3D* parent, const callback_type& callback, SceneGraph::DrawableGroup3D* group):
+    m_callback(callback),
     Object3D(parent),
-    SceneGraph::Drawable3D{*this, group},
-    m_callback(std::move(callback))
+    SceneGraph::Drawable3D{*this, group}
 {
 }
 

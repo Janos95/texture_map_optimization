@@ -14,7 +14,7 @@
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
-#include <Magnum/Platform/WindowlessEglApplication.h>
+#include <Magnum/Platform/WindowlessGlxApplication.h>
 #include <Magnum/Platform/GLContext.h>
 
 
@@ -133,6 +133,16 @@ void visibleTextureCoords(
                    .setTextureSize({W,H});
     mesh.draw(visibiltyShader);
 
+    //download filtered coords to host
+    Containers::Array<Vector2i> d(W*H);
+    auto view = MutableImageView2D{PixelFormat::RG32I, {W, H}, d};
+    coordsFramebuffer.mapForRead(CoordAttachment).read(coordsFramebuffer.viewport(), view);
+
+    //copy data into opencv matrix
+    std::transform(d.begin(), d.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });
+
+    return;
+
     //setup framebuffer for depth filtering
     GL::Framebuffer filteredCoordsBuffer{{{}, {W,H}}};
     GL::Renderbuffer coordBuffer;
@@ -151,7 +161,7 @@ void visibleTextureCoords(
     //download filtered coords to host
     Containers::Array<Vector2i> data(W*H);
     auto coordView = MutableImageView2D{PixelFormat::RG32I, {W, H}, data};
-    coordsFramebuffer.mapForRead(CoordAttachment).read(coordsFramebuffer.viewport(), coordView);
+    filteredCoordsBuffer.mapForRead(CoordAttachment).read(filteredCoordsBuffer.viewport(), coordView);
 
     //copy data into opencv matrix
     std::transform(data.begin(), data.end(), coords.begin(),[](const auto& v){ return cv::Vec2i(v[0],v[1]); });

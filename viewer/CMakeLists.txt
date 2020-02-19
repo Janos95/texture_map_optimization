@@ -5,8 +5,9 @@ add_library(viewer
         viewer.hpp
         scene_graph_node.cpp
         scene_graph_node.hpp
-        ../mesh/compile_open_mesh.cpp
-        ../mesh/compile_open_mesh.hpp
+        arc_ball.cpp
+        arc_ball.hpp
+        arc_ball_camera.hpp
         scene.hpp
         scene.cpp
         object.hpp

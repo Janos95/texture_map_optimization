@@ -24,4 +24,10 @@ struct Object
     Corrade::Containers::Optional<Magnum::GL::Texture2D> texture;
     Magnum::Color4 color = Magnum::Color4{1};
     SceneGraphNode* node;
+
+    Object(Object&&) noexcept = default;
+
+    ~Object(){
+        puts("object getting destructed");
+    }
 };

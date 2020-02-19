@@ -24,10 +24,8 @@ find_package(Magnum CONFIG REQUIRED
         Primitives
         AnySceneImporter
         AnyImageImporter
-        GlfwApplication
-        WindowlessEglApplication
         WindowlessGlxApplication
-        EglContext)
+        Sdl2Application)
 
 find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 

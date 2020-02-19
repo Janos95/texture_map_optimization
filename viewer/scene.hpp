@@ -13,9 +13,7 @@
 
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/Scene.h>
-#include <Magnum/Shaders/VertexColor.h>
-#include <Magnum/Shaders/Phong.h>
-#include <Magnum/Shaders/Flat.h>
+#include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
@@ -44,7 +42,7 @@ public:
     bool addObject(
             std::string name,
             const Trade::MeshData3D& meshdata,
-            const ImageView2D* image = nullptr);
+            const Image2D* image = nullptr);
 
     Object* getObject(std::string_view name){
         auto it = m_objects.find(name);
@@ -54,24 +52,23 @@ public:
            return &(it->second);
     }
 
-    const Object3D& cameraObject() const;
+    auto& root(){
+        return m_scene;
+    }
 
-    Object3D& cameraObject();
-
-    const SceneGraph::Camera3D& camera() const;
-
-    SceneGraph::Camera3D& camera();
+    auto& drawables(){
+        return m_drawableGroup;
+    }
 
 private:
 
     friend Viewer;
 
     Scene3D m_scene;
-    Object3D m_cameraObject;
-    Camera3D m_camera;
 
     SceneGraph::DrawableGroup3D m_drawableGroup;
 
     std::map<std::string, Object, std::less<>> m_objects;
+    std::map<std::string, std::unique_ptr<GL::AbstractShaderProgram>, std::less<>> m_shaders;
     std::vector<SceneGraphNode*> m_callbackHandles;
 };

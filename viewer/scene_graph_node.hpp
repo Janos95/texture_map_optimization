@@ -15,8 +15,7 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/SceneGraph/RigidMatrixTransformation3D.h>
-
-#include <folly/Function.h>
+#include <Magnum/GL/AbstractShaderProgram.h>
 
 using namespace Magnum;
 using namespace Corrade;
@@ -31,28 +30,28 @@ class DefaultCallback
 {
 public:
 
-    explicit DefaultCallback(Object& object);
-
-    DefaultCallback(DefaultCallback&&) noexcept = default;
-
-    DefaultCallback(const DefaultCallback&) = delete;
+    explicit DefaultCallback(Object&, Shaders::Flat3D&);
 
     void operator()(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera);
 
+    DefaultCallback(const DefaultCallback&) = default;
+    ~DefaultCallback(){
+        puts("getting destructed");
+    }
 private:
 
-    GL::Mesh* m_mesh = nullptr;
+    GL::Mesh& m_mesh;
     GL::Texture2D* m_texture = nullptr;
     Color4 m_color;
-    Shaders::Flat3D m_shader;
+    Shaders::Flat3D& m_shader;
 };
 
 class SceneGraphNode : public Drawable3D, public Object3D {
 public:
 
-    using callback_type = folly::Function<void(const Matrix4&, SceneGraph::Camera3D&)>;
+    using callback_type = std::function<void(const Matrix4&, SceneGraph::Camera3D&)>;
 
-    explicit SceneGraphNode(Object3D* parent, callback_type&& callback, SceneGraph::DrawableGroup3D* group);
+    explicit SceneGraphNode(Object3D* parent, const callback_type& callback, SceneGraph::DrawableGroup3D* group);
 
     void setDrawCallback(callback_type&& callback){ m_callback = std::move(callback); }
 

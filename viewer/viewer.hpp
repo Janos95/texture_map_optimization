@@ -6,11 +6,12 @@
 
 
 #include "scene.hpp"
+#include "arc_ball_camera.hpp"
 
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/ArrayViewStl.h> /** @todo remove once MeshData is sane */
 
-#include <Magnum/Platform/GlfwApplication.h>
+#include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/VertexColor.h>
@@ -27,34 +28,21 @@ using namespace Corrade;
 using namespace Magnum;
 
 
-using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
-using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
-
-
-
-
-class Viewer: public Platform::Application {
+class Viewer: public Platform::Application{
 public:
-    explicit Viewer(int, char**);
+    explicit Viewer(int argc, char** argv);
 
     std::vector<std::function<void(Scene&)>> callbacks;
     Scene scene;
 
 private:
 
-    Float depthAt(const Vector2i& windowPosition);
-    Vector3 unproject(const Vector2i& windowPosition, Float depth) const;
-
+    void drawEvent() override;
     void keyPressEvent(KeyEvent& event) override;
     void mousePressEvent(MouseEvent& event) override;
+    void mouseReleaseEvent(MouseEvent& event) override;
     void mouseMoveEvent(MouseMoveEvent& event) override;
     void mouseScrollEvent(MouseScrollEvent& event) override;
-    void drawEvent() override;
 
-
-    Float m_lastDepth;
-    Vector2i m_lastPosition{-1};
-    Vector3 m_rotationPoint, m_translationPoint;
-
-    int m_dummy = 1;
+    Corrade::Containers::Optional<ArcBallCamera> m_camera;
 };
