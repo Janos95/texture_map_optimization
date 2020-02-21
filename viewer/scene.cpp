@@ -4,20 +4,17 @@
 
 #include "scene.hpp"
 
-#include <Magnum/Shaders/Flat.h>
-#include <Magnum/Shaders/Phong.h>
-#include <Magnum/Shaders/VertexColor.h>
-#include <Magnum/Shaders/MeshVisualizer.h>
+
 
 using namespace Magnum::Math::Literals;
 
 Scene::Scene()
 {
-    m_shaders.emplace("flat_textured", new Shaders::Flat3D{Shaders::Flat3D::Flag::Textured});
-    m_shaders.emplace("flat", new Shaders::Flat3D{});
-    m_shaders.emplace("vertex_colored", new Shaders::VertexColor3D{});
-    m_shaders.emplace("phong", new Shaders::Phong{});
-    m_shaders.emplace("mesh_vis", new Shaders::MeshVisualizer{});
+    m_shaders.emplace("flat_textured", Shaders::Flat3D{Shaders::Flat3D::Flag::Textured});
+    m_shaders.emplace("flat", Shaders::Flat3D{});
+    m_shaders.emplace("vertex_colored", Shaders::VertexColor3D{});
+    m_shaders.emplace("phong", Shaders::Phong{});
+    m_shaders.emplace("mesh_vis", Shaders::MeshVisualizer{});
 }
 
 bool Scene::addObject(
@@ -49,9 +46,14 @@ bool Scene::addObject(
 
     auto& obj = it->second;
     auto& flat = texture ? m_shaders["flat_textured"] : m_shaders["flat"];
-    SceneGraphNode::callback_type cb = DefaultCallback(obj, dynamic_cast<Shaders::Flat3D&>(*flat));
-    SceneGraphNode::callback_type cb2 = [](const Matrix4&, const Camera3D&){ };
-    obj.node = new SceneGraphNode(&m_scene, cb2, &m_drawableGroup); //ownership is taking by parent node
+    auto cb = std::visit([&](auto& s) -> SceneGraphNode::callback_type {
+            if constexpr(std::is_same_v<std::decay_t<decltype(s)>, Shaders::Flat3D>)
+                return DefaultCallback(obj, s);
+            CORRADE_ASSERT(false, "Impossible code path", {});
+        },
+        flat);
+
+    obj.node = new SceneGraphNode(&m_scene, cb, &m_drawableGroup); //ownership is taking by parent node
     return true;
 }
 

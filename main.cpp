@@ -135,9 +135,9 @@ int main(int argc, char** argv) {
 
     Viewer viewer(argc, argv);
     viewer.scene.addObject("mesh", *meshdata, &texture);
-    //viewer.scene.addObject("coords", Primitives::axis3D());
+    viewer.scene.addObject("coords", Primitives::axis3D());
 
-    //viewer.scene.getObject("coords")->node->setTransformation(poses.front());
+    viewer.scene.getObject("coords")->node->setTransformation(poses.front());
 
     viewer.exec();
 

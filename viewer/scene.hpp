@@ -19,10 +19,15 @@
 #include <Magnum/ImageView.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Shaders/Flat.h>
+#include <Magnum/Shaders/Phong.h>
+#include <Magnum/Shaders/VertexColor.h>
+#include <Magnum/Shaders/MeshVisualizer.h>
 
 #include <vector>
 #include <memory>
 #include <map>
+#include <variant>
 
 using namespace Corrade;
 using namespace Magnum;
@@ -33,6 +38,18 @@ using Camera3D = SceneGraph::Camera3D;
 
 class Viewer;
 
+
+template< class, class = std::void_t<> >
+struct has_viewport_size : std::false_type { };
+
+template< class T >
+struct has_viewport_size<
+        T,
+        /* check if type T has a member setViewportSize that takes a Vector2 */
+        std::void_t<decltype(std::declval<T>().setViewportSize(std::declval<Vector2>()))>> : std::true_type { };
+
+template<class T>
+constexpr auto has_viewport_size_v = has_viewport_size<T>::value;
 
 class Scene {
 public:
@@ -49,7 +66,7 @@ public:
         if(it == m_objects.end())
             return nullptr;
         else
-           return &(it->second);
+           return std::addressof(it->second);
     }
 
     auto& root(){
@@ -60,7 +77,19 @@ public:
         return m_drawableGroup;
     }
 
+    void setViewportSize(const Vector2i& size){
+        for(auto& [_,shader] : m_shaders) {
+            std::visit([size = Vector2(size)](auto &s) {
+                if constexpr(has_viewport_size_v < std::remove_reference_t<decltype(s)>>)
+                    s.setViewportSize(size);
+            }, shader);
+        }
+    }
+
+
 private:
+
+    using shader_variant = std::variant<Shaders::Flat3D, Shaders::VertexColor3D, Shaders::MeshVisualizer, Shaders::Phong>;
 
     friend Viewer;
 
@@ -69,6 +98,5 @@ private:
     SceneGraph::DrawableGroup3D m_drawableGroup;
 
     std::map<std::string, Object, std::less<>> m_objects;
-    std::map<std::string, std::unique_ptr<GL::AbstractShaderProgram>, std::less<>> m_shaders;
-    std::vector<SceneGraphNode*> m_callbackHandles;
+    std::map<std::string, shader_variant, std::less<>> m_shaders;
 };

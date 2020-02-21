@@ -40,6 +40,15 @@ Viewer::Viewer(int argc, char** argv):
 }
 
 
+void Viewer::viewportEvent(ViewportEvent& event) {
+    GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
+
+    m_camera->reshape(event.windowSize(), event.framebufferSize());
+    scene.setViewportSize(framebufferSize());
+}
+
+
+
 void Viewer::keyPressEvent(KeyEvent& event) {
     switch(event.key()) {
         case KeyEvent::Key::L:
