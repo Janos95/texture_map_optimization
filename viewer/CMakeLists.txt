@@ -1,17 +1,15 @@
 
-
-add_library(viewer
+corrade_add_resource(viewer_RESOURCES resources.conf)
+add_library(viewer SHARED
         viewer.cpp
         viewer.hpp
-        scene_graph_node.cpp
-        scene_graph_node.hpp
         arc_ball.cpp
         arc_ball.hpp
+        drawables.cpp
+        drawables.hpp
         arc_ball_camera.hpp
-        scene.hpp
-        scene.cpp
-        object.hpp
-        camera.hpp)
+        ${viewer_RESOURCES}
+        )
 
 target_include_directories(viewer PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(viewer
@@ -22,10 +20,13 @@ target_link_libraries(viewer
             Magnum::MeshTools
             Magnum::SceneGraph
             Magnum::Application
+            Magnum::Sdl2Application
             Magnum::Shaders
-            Folly::folly
+            Magnum::Primitives
+            Magnum::DebugTools
+            MagnumIntegration::ImGui
             tmo::shaders
+            tmo::io
         )
-
 
 add_library(tmo::viewer ALIAS viewer)

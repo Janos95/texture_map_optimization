@@ -1,0 +1,29 @@
+This files are part of a complete leaf package.
+
+Naming Convention
+
+Prefixes:
+
+T_ = Texture
+SM_ = Static Mesh
+
+Suffixes:
+
+_A = Albedo
+_AO = Ambient Occlusion 
+_D = Displacement 
+_N = Normal
+_R = Roughness
+_TR = Translucency
+_R_AO_D = Roughness (Red Channel), Ambient Occlusion (Green Channel), Displacement (Blue Channel)
+
+
+
+
+
+
+
+
+
+												
+												

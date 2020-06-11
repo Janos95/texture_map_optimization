@@ -60,6 +60,8 @@ public:
         _camera->draw(drawables);
     }
 
+    auto projectionMatrix() { return _camera->projectionMatrix(); }
+
 private:
     SceneGraph::AbstractTranslationRotation3D* _cameraObject{};
     SceneGraph::Camera3D* _camera{};

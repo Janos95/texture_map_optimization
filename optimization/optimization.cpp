@@ -3,7 +3,7 @@
 //
 
 #include "optimization.hpp"
-#include "visible_texture.hpp"
+#include "diff_shader.hpp"
 #include "interpolated_vertices.hpp"
 #include "coords_filter.hpp"
 
@@ -128,7 +128,7 @@ void visibleTextureCoords(
     coordsFramebuffer.clearColor(0, Vector4i(-1));
     coordsFramebuffer.bind();
 
-    VisibleTextureShader visibiltyShader;
+    DiffShader visibiltyShader;
     visibiltyShader.setTransformationProjectionMatrix(proj * tf)
                    .setTextureSize({W,H});
     mesh.draw(visibiltyShader);
