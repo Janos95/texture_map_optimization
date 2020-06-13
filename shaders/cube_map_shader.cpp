@@ -14,7 +14,7 @@
 using namespace Magnum;
 
 
-CubeMapShader::CubeMapShader(){
+CubeMapShader::CubeMapShader(Phase phase){
 
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL450);
 
@@ -24,7 +24,17 @@ CubeMapShader::CubeMapShader(){
     GL::Shader frag{GL::Version::GL450, GL::Shader::Type::Fragment};
 
     vert.addSource(rs.get("cube_map_shader.vert"));
-    frag.addSource(rs.get("cube_map_shader.frag"));
+    switch (phase) {
+        case Phase::EquirectangularConversion :
+            frag.addSource(rs.get("cube_map_shader_equirectangular.frag"));
+            break;
+        case Phase::IrradianceConvolution :
+            frag.addSource(rs.get("cube_map_shader_irradiance.frag"));
+            break;
+        case Phase::Prefilter :
+            frag.addSource(rs.get("cube_map_shader_prefilter.frag"));
+            break;
+    }
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(Mg::GL::Shader::compile({vert, frag}));
 

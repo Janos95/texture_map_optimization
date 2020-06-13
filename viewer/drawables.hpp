@@ -87,6 +87,8 @@ public:
             Mg::Vector3{300.0f, 300.0f, 300.0f},
             Mg::Vector3{300.0f, 300.0f, 300.0f}
     }};
+
+    Mg::GL::CubeMapTexture* irradianceMap = nullptr;
 };
 
 struct MeshVisualizerDrawable : MeshDrawable

@@ -1,11 +1,12 @@
-out vec4 fragmentColor;
 in vec3 interpolatedPositions;
+
+out vec4 fragmentColor;
 
 layout(binding = 0)
 uniform sampler2D equirectangularMap;
 
-const vec2 invAtan = vec2(0.1591, 0.3183);
-vec2 SampleSphericalMap(vec3 v)
+const highp vec2 invAtan = vec2(0.1591, 0.3183);
+vec2 SampleSphericalMap(highp vec3 v)
 {
     vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
     uv *= invAtan;
@@ -15,7 +16,7 @@ vec2 SampleSphericalMap(vec3 v)
 
 void main()
 {
-    vec2 uv = SampleSphericalMap(normalize(interpolatedPositions)); // make sure to normalize localPos
+    vec2 uv = SampleSphericalMap(normalize(interpolatedPositions)); // make sure to normalize positions
     vec3 color = texture(equirectangularMap, uv).rgb;
 
     fragmentColor = vec4(color, 1.0);

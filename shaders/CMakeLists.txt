@@ -11,6 +11,8 @@ add_library(shaders SHARED
         cube_map_shader.cpp
         background_shader.cpp
         background_shader.hpp
+        screen_triangle.cpp
+        screen_triangle.hpp
         ${TMO_Rcs})
 
 

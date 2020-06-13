@@ -8,6 +8,7 @@
 #include "arc_ball_camera.hpp"
 #include "pbr_shader.hpp"
 #include "cube_map_shader.hpp"
+#include "background_shader.hpp"
 #include "types.hpp"
 #include "drawables.hpp"
 
@@ -28,11 +29,6 @@
 
 namespace Cr = Corrade;
 namespace Mg = Magnum;
-
-struct Properties {
-    float roughness, metallness;
-    Matrix4 modelMatrix;
-};
 
 struct Viewer: public Platform::Application{
     explicit Viewer(int argc, char** argv);
@@ -58,13 +54,14 @@ struct Viewer: public Platform::Application{
     PbrShader pbrShader{Mg::NoCreate};
     Mg::Shaders::Phong phongShader{Mg::NoCreate};
     bool trackingMouse = false;
-    Cr::Containers::Array<std::pair<float, float>> materialProperties{Cr::Containers::NoInit, 7*7};
 
     Mg::GL::Texture2D colorMapTexture{Mg::NoCreate};
 
-    GL::Texture2D equirectangularTexture{Mg::NoCreate};
     Mg::GL::Mesh cube{Mg::NoCreate};
-    GL::CubeMapTexture cubeMap{Mg::NoCreate};
+    GL::CubeMapTexture hdrIrradianceMap{Mg::NoCreate};
+    GL::CubeMapTexture hdrCubeMap{Mg::NoCreate};
+    GL::Texture2D hdrEquirectangular{Mg::NoCreate};
+    BackgroundShader backgroundShader{Mg::NoCreate};
 
     Mg::ImGuiIntegration::Context imgui{Mg::NoCreate};
 };

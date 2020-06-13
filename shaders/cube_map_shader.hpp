@@ -6,6 +6,7 @@
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
@@ -19,7 +20,14 @@ namespace Cr = Corrade;
 
 struct CubeMapShader : public Mg::GL::AbstractShaderProgram {
 
-    explicit CubeMapShader();
+    enum class Phase : Mg::UnsignedInt
+    {
+        EquirectangularConversion,
+        IrradianceConvolution,
+        Prefilter
+    };
+
+    explicit CubeMapShader(Phase);
     explicit CubeMapShader(Mg::NoCreateT) : Mg::GL::AbstractShaderProgram{Mg::NoCreate} {}
 
     CubeMapShader& setTransformationMatrix(Mg::Matrix4 const& tf){
@@ -32,13 +40,18 @@ struct CubeMapShader : public Mg::GL::AbstractShaderProgram {
         return *this;
     }
 
-    CubeMapShader& bindEquirectangularTexture(Mg::GL::Texture2D& texture){
-        texture.bind(equirectanguleTextureUnit);
+    CubeMapShader& bindTexture(Mg::GL::Texture2D& texture){
+        texture.bind(textureUnit);
+        return *this;
+    }
+
+    CubeMapShader& bindTexture(Mg::GL::CubeMapTexture& texture){
+        texture.bind(textureUnit);
         return *this;
     }
 
     Mg::Int projectionMatrixUniform;
     Mg::Int transformationMatrixUniform;
 
-    Mg::Int equirectanguleTextureUnit = 0;
+    Mg::Int textureUnit = 0;
 };

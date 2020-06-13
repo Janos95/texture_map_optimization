@@ -6,6 +6,7 @@
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
@@ -61,13 +62,13 @@ struct PbrShader: public Mg::GL::AbstractShaderProgram {
         return *this;
     }
 
-    PbrShader& bindColorMap(Mg::GL::Texture2D& colorMap){
-        colorMap.bind(colorMapTextureUnit);
+    PbrShader& bindIrradianceMap(Mg::GL::CubeMapTexture& colorMap){
+        colorMap.bind(irradianceTextureUnit);
         return *this;
     }
 
 
-    Mg::Int colorMapTextureUnit = 0;
+    Mg::Int irradianceTextureUnit = 0;
 
     Mg::Int albedoUniform;
     Mg::Int metallicUniform;

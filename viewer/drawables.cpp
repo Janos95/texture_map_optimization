@@ -98,6 +98,7 @@ void PbrDrawable::draw(const Mg::Matrix4& transformationMatrix, Mg::SceneGraph::
           .setTransformationMatrix(transformationMatrix)
           .setNormalMatrix(transformationMatrix.normalMatrix())
           .setProjectionMatrix(camera.projectionMatrix())
+          .bindIrradianceMap(*irradianceMap)
           .draw(mesh);
 }
 

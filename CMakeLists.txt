@@ -8,7 +8,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/modules)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(Corrade CONFIG REQUIRED PluginManager Containers TestSuite)
 find_package(Magnum CONFIG REQUIRED GL SceneGraph MeshTools Sdl2Application Shaders Primitives DebugTools)
-find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter StbImageImporter)
+find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter StbImageImporter StbImageConverter)
 find_package(MagnumIntegration CONFIG REQUIRED ImGui Eigen)
 find_package(ImGui REQUIRED COMPONENTS SourcesMiscCpp)
 

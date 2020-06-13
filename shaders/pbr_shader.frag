@@ -3,6 +3,7 @@ out lowp vec4 fragmentColor;
 in highp vec2 interpolatedTextureCoordinates;
 in highp vec3 cameraDirection;
 in mediump vec3 transformedNormal;
+in mediump vec3 irradiance;
 in highp vec3 lightDirections[LIGHT_COUNT];
 
 // material parameters
@@ -11,6 +12,8 @@ uniform float metallic = 0.9;
 uniform float roughness = 0.1;
 uniform float ambientOcclusion = 1.;
 uniform vec3 lightColors[LIGHT_COUNT];
+
+
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -52,6 +55,11 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+// ----------------------------------------------------------------------------
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 // ----------------------------------------------------------------------------
 void main()
@@ -102,9 +110,10 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }
 
-    // ambient lighting (note that the next IBL tutorial will replace
-    // this ambient lighting with environment lighting).
-    vec3 ambient = vec3(0.03) * albedo * ambientOcclusion;
+    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kD = 1.0 - kS;
+    vec3 diffuse    = irradiance * albedo;
+    vec3 ambient    = (kD * diffuse) * ambientOcclusion;
 
     vec3 color = ambient + Lo;
 
