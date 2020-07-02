@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "types.hpp"
-#include "pbr_shader.hpp"
+#include "types.h"
 
 #include <Magnum/GL/GL.h>
 #include <Magnum/Math/Math.h>
@@ -57,38 +56,6 @@ public:
 
     Mg::Shaders::Phong& shader;
     Mg::Color4 color{0x2f83cc_rgbf};
-};
-
-
-struct PbrDrawable : MeshDrawable
-{
-public:
-
-    explicit PbrDrawable(Object&, Mg::GL::Mesh&, Mg::GL::AbstractShaderProgram&, DrawableGroup*);
-
-    void draw(const Mg::Matrix4&, Mg::SceneGraph::Camera3D&) override;
-
-
-    PbrShader& shader;
-    Mg::Float metallness = 0.5, roughness = 0.5, ambientOcclusion = 1.;
-    Mg::Vector3 albedo{.5f, 0.f, 0.f};
-    Mg::Vector3 cameraPosition;
-
-    Cr::Containers::Array<Mg::Vector3> lights{Cr::Containers::InPlaceInit, {
-            Mg::Vector3{-10.0f,  10.0f, 10.0f},
-            Mg::Vector3{10.0f,  10.0f, 10.0f},
-            Mg::Vector3{-10.0f, -10.0f, 10.0f},
-            Mg::Vector3{10.0f, -10.0f, 10.0f}
-    }};
-
-    Cr::Containers::Array<Mg::Vector3> lightColors{Cr::Containers::InPlaceInit, {
-            Mg::Vector3{300.0f, 300.0f, 300.0f},
-            Mg::Vector3{300.0f, 300.0f, 300.0f},
-            Mg::Vector3{300.0f, 300.0f, 300.0f},
-            Mg::Vector3{300.0f, 300.0f, 300.0f}
-    }};
-
-    Mg::GL::CubeMapTexture* irradianceMap = nullptr;
 };
 
 struct MeshVisualizerDrawable : MeshDrawable

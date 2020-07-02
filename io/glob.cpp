@@ -2,7 +2,7 @@
 // Created by jmeny on 08.11.19.
 //
 
-#include "glob.hpp"
+#include "glob.h"
 
 #include <Corrade/Utility/Directory.h>
 

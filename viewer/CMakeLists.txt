@@ -2,11 +2,11 @@
 corrade_add_resource(viewer_RESOURCES resources.conf)
 add_library(viewer SHARED
         viewer.cpp
-        viewer.hpp
+        viewer.h
         arc_ball.cpp
-        arc_ball.hpp
+        arc_ball.h
         drawables.cpp
-        drawables.hpp
+        drawables.h
         arc_ball_camera.hpp
         ${viewer_RESOURCES}
         )

@@ -2,7 +2,7 @@
 // Created by janos on 27.02.20.
 //
 
-#include "drawables.hpp"
+#include "drawables.h"
 
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Shaders/Phong.h>
@@ -75,33 +75,6 @@ void PhongDiffuseDrawable::draw(const Mg::Matrix4& transformationMatrix, Mg::Sce
           .setTransformationMatrix(transformationMatrix)
           .setNormalMatrix(transformationMatrix.normalMatrix())
           .setProjectionMatrix(camera.projectionMatrix())
-          .draw(mesh);
-}
-
-
-PbrDrawable::PbrDrawable(Object& object, Mg::GL::Mesh& m, Mg::GL::AbstractShaderProgram& shader, DrawableGroup* group):
-        MeshDrawable(object, m, group),
-        shader(dynamic_cast<PbrShader&>(shader))
-{
-}
-
-void PbrDrawable::draw(const Mg::Matrix4& transformationMatrix, Mg::SceneGraph::Camera3D& camera) {
-
-    Containers::Array<Vector3> lightsTransformed(Containers::NoInit, lights.size());
-    for (uint32_t i = 0; i < lights.size(); ++i) {
-        lightsTransformed[i] = transformationMatrix.transformPoint(lights[i]);
-    }
-
-    shader.setMetallness(metallness)
-          .setRoughness(roughness)
-          .setAlbedo(albedo)
-          .setAmbientOcclusion(ambientOcclusion)
-          .setLightPositions(lightsTransformed)
-          .setLightColors(lightColors)
-          .setTransformationMatrix(transformationMatrix)
-          .setNormalMatrix(transformationMatrix.normalMatrix())
-          .setProjectionMatrix(camera.projectionMatrix())
-          .bindIrradianceMap(*irradianceMap)
           .draw(mesh);
 }
 

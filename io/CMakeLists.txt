@@ -3,10 +3,9 @@
 
 add_library(io
         glob.cpp
-        glob.hpp
-        load_poses.hpp
+        glob.h
         io.cpp
-        io.hpp)
+        io.h)
 
 
 target_include_directories(io PUBLIC ${CMAKE_CURRENT_LIST_DIR})

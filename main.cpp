@@ -1,8 +1,7 @@
 
 
-#include "viewer.hpp"
-#include "load_poses.hpp"
-#include "io.hpp"
+#include "viewer.h"
+#include "io.h"
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/MeshTools/Compile.h>

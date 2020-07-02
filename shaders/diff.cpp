@@ -10,16 +10,19 @@
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
 
+using namespace Magnum;
+
+namespace shaders {
+
 DiffShader::DiffShader() {
-    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
+    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL450);
 
     Utility::Resource rs{"tmo-data"};
 
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex};
-    GL::Shader frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    GL::Shader vert{GL::Version::GL450, GL::Shader::Type::Vertex};
+    GL::Shader frag{GL::Version::GL450, GL::Shader::Type::Fragment};
 
-    vert//.addSource(rs.get("generic.glsl"))
-        .addSource(rs.get("visible_texture.vert"));
+    vert.addSource(rs.get("visible_texture.vert"));
 
     frag.addSource(rs.get("visible_texture.frag"));
 
@@ -34,18 +37,19 @@ DiffShader::DiffShader() {
     m_textureSizeUniform = uniformLocation("textureSize");
 }
 
-DiffShader& DiffShader::setRvec(const Vector3& rvec) {
+DiffShader &DiffShader::setRvec(const Vector3 &rvec) {
     setUniform(m_rvecUniform, rvec);
     return *this;
 }
 
-DiffShader& DiffShader::setTvec(const Vector3& tvec) {
+DiffShader &DiffShader::setTvec(const Vector3 &tvec) {
     setUniform(m_tvecUniform, tvec);
     return *this;
 }
 
-DiffShader& DiffShader::setTextureSize(const VectorTypeFor<2, Int>& size) {
+DiffShader &DiffShader::setTextureSize(const VectorTypeFor<2, Int> &size) {
     setUniform(m_textureSizeUniform, size);
     return *this;
 }
 
+}

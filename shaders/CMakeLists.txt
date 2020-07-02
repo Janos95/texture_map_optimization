@@ -7,7 +7,7 @@ add_library(shaders SHARED
         diff.cpp
         average_color.h
         average_color.cpp
-        ${TMO_Rcs} average_color.cpp average_color.h)
+        ${TMO_Rcs} average_color.cpp average_color.h divide_by_alpha.cpp divide_by_alpha.h)
 
 
 target_include_directories(shaders PUBLIC ${CMAKE_CURRENT_LIST_DIR})

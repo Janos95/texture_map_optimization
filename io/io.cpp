@@ -2,7 +2,7 @@
 // Created by janos on 2/8/20.
 //
 
-#include "io.hpp"
+#include "io.h"
 
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Optional.h>
@@ -12,6 +12,8 @@
 
 #include <MagnumPlugins/AnySceneImporter/AnySceneImporter.h>
 #include <MagnumPlugins/StbImageImporter/StbImageImporter.h>
+
+#include <fstream>
 
 using namespace Magnum;
 using namespace Corrade;
@@ -61,8 +63,28 @@ Containers::Array<Magnum::Trade::ImageData2D> loadImages(const std::string& dir)
         auto path = Directory::join(dir, file);
         if(!importer->openFile(path) || !importer->image2DCount() || !importer->image2D(0))
             continue;
-        Containers::arrayAppend(images, *(importer->image2D(0)));
+
+        auto data = importer->image2D(0);
+        Containers::arrayAppend(images, std::move(*data));
         importer->image2D(0);
     }
     Debug{} << "Imported " << images.size() << " images";
+    return images;
+}
+
+Containers::Array<Matrix4> loadPoses(std::string const& path)
+{
+    std::ifstream file(path);
+    Containers::Array<Matrix4> tfs;
+    int dummy;
+    while(file >> dummy >> dummy >> dummy)  {
+        Matrix4 tf;
+        file >> tf[0][0] >> tf[1][0] >> tf[2][0] >> tf[3][0] >>
+             tf[0][1] >> tf[1][1] >> tf[2][1] >> tf[3][1] >>
+             tf[0][2] >> tf[1][2] >> tf[2][2] >> tf[3][2] >>
+             tf[0][3] >> tf[1][3] >> tf[2][3] >> tf[3][3];
+        Containers::arrayAppend(tfs, tf);
+    }
+
+    return tfs;
 }

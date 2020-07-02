@@ -6,11 +6,9 @@
 
 
 #include "arc_ball_camera.hpp"
-#include "pbr_shader.hpp"
-#include "cube_map_shader.hpp"
-#include "background_shader.hpp"
-#include "types.hpp"
-#include "drawables.hpp"
+#include "average_color.h"
+#include "types.h"
+#include "drawables.h"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StaticArray.h>
@@ -53,10 +51,14 @@ struct Viewer: public Platform::Application{
     Mg::GL::Texture2D texture{Mg::NoCreate};
     Mg::GL::Mesh mesh{Mg::NoCreate};
     Mg::Trade::MeshData meshData{Mg::MeshPrimitive::Points, 0};
-    Containers::Array<Mg::Trade::ImageData2D> images;
+    //Containers::Array<Mg::Trade::ImageData2D> images;
+    Containers::Array<Mg::GL::Texture2D> imageTextures;
     Containers::Array<Matrix4> poses;
-    Mg::Shaders::Flat3D shader{Mg::NoCreate};
+    Matrix4 projection;
     FlatDrawable* drawable = nullptr;
+
+    Mg::Shaders::Flat3D shader{Mg::NoCreate};
+    shaders::AverageColor averageColor{Mg::NoCreate};
 
     bool trackingMouse = false;
 

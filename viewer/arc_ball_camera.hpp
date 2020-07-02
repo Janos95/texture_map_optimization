@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "arc_ball.hpp"
+#include "arc_ball.h"
 
 #include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/SceneGraph/AbstractTranslationRotation3D.h>
