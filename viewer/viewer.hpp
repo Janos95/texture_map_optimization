@@ -21,14 +21,15 @@
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
-#include <Magnum/Shaders/Phong.h>
+#include <Magnum/Shaders/Flat.h>
+#include <Magnum/Trade/MeshData.h>
+#include <Magnum/Trade/ImageData.h>
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.h>
 #include <Corrade/Containers/Array.h>
 
-namespace Cr = Corrade;
-namespace Mg = Magnum;
+
 
 struct Viewer: public Platform::Application{
     explicit Viewer(int argc, char** argv);
@@ -51,17 +52,13 @@ struct Viewer: public Platform::Application{
 
     Mg::GL::Texture2D texture{Mg::NoCreate};
     Mg::GL::Mesh mesh{Mg::NoCreate};
-    PbrShader pbrShader{Mg::NoCreate};
-    Mg::Shaders::Phong phongShader{Mg::NoCreate};
+    Mg::Trade::MeshData meshData{Mg::MeshPrimitive::Points, 0};
+    Containers::Array<Mg::Trade::ImageData2D> images;
+    Containers::Array<Matrix4> poses;
+    Mg::Shaders::Flat3D shader{Mg::NoCreate};
+    FlatDrawable* drawable = nullptr;
+
     bool trackingMouse = false;
-
-    Mg::GL::Texture2D colorMapTexture{Mg::NoCreate};
-
-    Mg::GL::Mesh cube{Mg::NoCreate};
-    GL::CubeMapTexture hdrIrradianceMap{Mg::NoCreate};
-    GL::CubeMapTexture hdrCubeMap{Mg::NoCreate};
-    GL::Texture2D hdrEquirectangular{Mg::NoCreate};
-    BackgroundShader backgroundShader{Mg::NoCreate};
 
     Mg::ImGuiIntegration::Context imgui{Mg::NoCreate};
 };

@@ -11,16 +11,13 @@
 
 #include <fstream>
 
-using namespace Magnum;
-using namespace Corrade;
-
 auto loadPoses(const std::string& path)
 {
     std::ifstream file(path);
-    Containers::Array<Matrix4d> tfs;
+    Containers::Array<Matrix4> tfs;
     int dummy;
     while(file >> dummy >> dummy >> dummy)  {
-        Matrix4d tf;
+        Matrix4 tf;
         file >> tf[0][0] >> tf[1][0] >> tf[2][0] >> tf[3][0] >>
                 tf[0][1] >> tf[1][1] >> tf[2][1] >> tf[3][1] >>
                 tf[0][2] >> tf[1][2] >> tf[2][2] >> tf[3][2] >>

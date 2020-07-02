@@ -3,7 +3,7 @@
 //
 
 #include "optimization.hpp"
-#include "diff_shader.hpp"
+#include "diff.h"
 #include "interpolated_vertices.hpp"
 #include "coords_filter.hpp"
 

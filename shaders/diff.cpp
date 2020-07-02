@@ -2,7 +2,7 @@
 // Created by janos on 05.02.20.
 //
 
-#include "diff_shader.hpp"
+#include "diff.h"
 
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/Resource.h>

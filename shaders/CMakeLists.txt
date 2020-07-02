@@ -3,17 +3,11 @@
 corrade_add_resource(TMO_Rcs resources.conf)
 
 add_library(shaders SHARED
-        pbr_shader.hpp
-        pbr_shader.cpp
-        diff_shader.hpp
-        diff_shader.cpp
-        cube_map_shader.hpp
-        cube_map_shader.cpp
-        background_shader.cpp
-        background_shader.hpp
-        screen_triangle.cpp
-        screen_triangle.hpp
-        ${TMO_Rcs})
+        diff.h
+        diff.cpp
+        average_color.h
+        average_color.cpp
+        ${TMO_Rcs} average_color.cpp average_color.h)
 
 
 target_include_directories(shaders PUBLIC ${CMAKE_CURRENT_LIST_DIR})

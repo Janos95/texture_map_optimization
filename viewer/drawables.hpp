@@ -29,12 +29,12 @@ struct MeshDrawable : Drawable {
 struct FlatDrawable : MeshDrawable
 {
 
-    explicit FlatDrawable(Object&, Mg::GL::Mesh&, Mg::GL::AbstractShaderProgram&, DrawableGroup*);
+    explicit FlatDrawable(Object&, Mg::GL::Mesh&, Mg::Shaders::Flat3D&, DrawableGroup*);
 
     void draw(const Magnum::Matrix4&, Magnum::SceneGraph::Camera3D&) override;
 
     Mg::Shaders::Flat3D& shader;
-    Mg::Color4 color;
+    Mg::Color4 color = Mg::Color4::red();
 };
 
 struct VertexColorDrawable : MeshDrawable

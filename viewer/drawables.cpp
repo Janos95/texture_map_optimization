@@ -24,15 +24,18 @@ MeshDrawable::MeshDrawable(Object& obj, Mg::GL::Mesh& m, DrawableGroup* group, M
 }
 
 
-FlatDrawable::FlatDrawable(Object& object, Mg::GL::Mesh& m, Mg::GL::AbstractShaderProgram& shader, DrawableGroup* group):
+FlatDrawable::FlatDrawable(Object& object, Mg::GL::Mesh& m, Mg::Shaders::Flat3D& s, DrawableGroup* group):
         MeshDrawable(object, m, group),
-        shader(dynamic_cast<Magnum::Shaders::Flat3D&>(shader))
+        shader(s)
 {
 }
 
 void FlatDrawable::draw(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera) {
-    if (texture) shader.bindTexture(*texture);
-    else shader.setColor(color);
+    if (texture) {
+        shader.bindTexture(*texture);
+    } else {
+        shader.setColor(color);
+    }
     shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformationMatrix)
             .draw(mesh);
 }
