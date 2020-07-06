@@ -7,7 +7,7 @@ add_library(shaders SHARED
         Diff.cpp
         TextureCoordinates.h
         TextureCoordinates.cpp
-        ${TMO_Rcs} TextureCoordinates.cpp TextureCoordinates.h ScreenTriangle.cpp ScreenTriangle.h Remap.cpp Remap.h Combine.cpp Combine.h)
+        ${TMO_Rcs} TextureCoordinates.cpp TextureCoordinates.h ScreenTriangle.cpp ScreenTriangle.h Remap.cpp Remap.h Combine.cpp Combine.h Sobel.cpp Sobel.h)
 
 
 target_include_directories(shaders PUBLIC ${CMAKE_CURRENT_LIST_DIR})

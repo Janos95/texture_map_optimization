@@ -31,6 +31,11 @@
 #include <Magnum/Shaders/Phong.h>
 #include <Magnum/Shaders/VertexColor.h>
 
+struct KeyFrame {
+    GL::Texture2D image, derivativeX, derivativeY;
+    Matrix4 pose;
+};
+
 
 struct Viewer: public Platform::Application{
     explicit Viewer(int argc, char** argv);
@@ -46,6 +51,7 @@ struct Viewer: public Platform::Application{
     void textInputEvent(TextInputEvent& event) override;
 
     void drawOptions();
+    void averageColors();
 
     Cr::Containers::Optional<ArcBallCamera> camera;
     DrawableGroup drawables;
@@ -56,8 +62,7 @@ struct Viewer: public Platform::Application{
     Mg::GL::Mesh mesh{Mg::NoCreate};
     Mg::Trade::MeshData meshData{Mg::MeshPrimitive::Points, 0};
     //Containers::Array<Mg::Trade::ImageData2D> images;
-    Containers::Array<Mg::GL::Texture2D> imageTextures;
-    Containers::Array<Matrix4> poses;
+    Containers::Array<KeyFrame> keyFrames;
     Matrix4 projection;
     FlatDrawable* drawable = nullptr;
 
@@ -72,7 +77,7 @@ struct Viewer: public Platform::Application{
 
     Mg::ImGuiIntegration::Context imgui{Mg::NoCreate};
 
-    bool showTexture = false;
+    bool showTexture = true;
 
     Vector2i textureSize{1024, 1024};
     Vector2i imageSize{640, 480};

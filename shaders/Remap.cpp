@@ -29,10 +29,6 @@ Remap::Remap() {
     comp.addSource("#extension GL_NV_shader_atomic_float : require\n")
         .addSource(rs.get("Remap.comp"));
 
-    for(auto& line : comp.sources()){
-        Debug{} << line.c_str();
-    }
-
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({comp}));
 
     attachShaders({comp});

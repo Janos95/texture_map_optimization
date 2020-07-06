@@ -6,6 +6,7 @@
 #include "io.h"
 #include "Remap.h"
 #include "ScreenTriangle.h"
+#include "Sobel.h"
 
 #include <scoped_timer/scoped_timer.hpp>
 
@@ -128,21 +129,30 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
     {
         auto images = loadImages(
                 "/home/janos/texture_map_optimization/assets/fountain_small/image");
+        auto poses = loadPoses(
+                "/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
         Vector2i imageSize = images.front().size();
         Debug{} << "expected size " << Vector2i{640, 480} << ", got "
                 << imageSize;
 
-        Containers::arrayResize(imageTextures, images.size());
+        ::Shaders::Sobel sobel;
+        Vector3ui wgCount(imageSize.x(), imageSize.y(), 1);
+
+        Containers::arrayResize(keyFrames, images.size());
         for(std::size_t i = 0; i < images.size(); ++i){
-            setupTexture(imageTextures[i], imageSize, GL::TextureFormat::RGBA32F);
-            imageTextures[i].setSubImage(0, {}, images[i]);
-            //imageTextures[i].setMagnificationFilter(GL::SamplerFilter::Linear)
-            //                .setMinificationFilter(GL::SamplerFilter::Linear,
-            //                                       GL::SamplerMipmap::Linear)
-            //                .setWrapping(GL::SamplerWrapping::ClampToEdge)
-            //                .setStorage(1, GL::TextureFormat::RGBA32F,
-            //                            imageSize)
-            //                .setSubImage(0, {}, images[i]);
+            auto& kf = keyFrames[i];
+
+            setupTexture(kf.image, imageSize, GL::TextureFormat::RGBA32F);
+            setupTexture(kf.derivativeX, imageSize, GL::TextureFormat::RGBA32F);
+            setupTexture(kf.derivativeY, imageSize, GL::TextureFormat::RGBA32F);
+
+            keyFrames[i].image.setSubImage(0, {}, images[i]);
+            keyFrames[i].pose = poses[i] * Matrix4::scaling({1,-1,1}) * Matrix4::reflection({0,0,1}); /*computer vision -> opengl */
+
+            sobel.bindImage(kf.image)
+                 .bindDerivativeX(kf.derivativeX)
+                 .bindDerivativeY(kf.derivativeY)
+                 .dispatchCompute(wgCount);
         }
 
         meshData = *loadMeshData(
@@ -153,8 +163,6 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
                                   MeshTools::CompileFlag::GenerateSmoothNormals);
         drawable = new FlatDrawable(scene, mesh, shader, &drawables);
         drawable->texture = &texture;
-        poses = loadPoses(
-                "/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
         projection = computeProjectionMatrix(640.f, 480.f, 525.f, 525.f, 319.5f,239.5f);
 
         texCoordsShader = ::Shaders::TextureCoordinates{};
@@ -163,10 +171,9 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
 
         cs = MeshTools::compile(Primitives::axis3D());
         vertexColored = Magnum::Shaders::VertexColor3D{};
-        for(auto& tf : poses){
-            tf = tf * Matrix4::scaling({1,-1,1}) * Matrix4::reflection({0,0,1});
+        for(auto const& kf : keyFrames){
             auto obj = new Object(&scene);
-            obj->scale({.1,.1,.1}).transform(tf);
+            obj->scale({.1,.1,.1}).transform(kf.pose);
             new VertexColorDrawable(*obj, cs, vertexColored, &drawables);
         }
     }
@@ -334,6 +341,76 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
     redraw(); /* camera has changed, redraw! */
 }
 
+void Viewer::averageColors() {
+    ScopedTimer t{"Averaging all colors", true};
+
+    Range2Di viewport{{}, imageSize};
+    GL::Framebuffer fb{viewport};
+    GL::Renderbuffer depthBuffer;
+
+    depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24,
+                           viewport.size());
+    fb.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth,
+                          depthBuffer);
+
+    GL::Texture2D texCoordsTexture;
+    setupTexture(texCoordsTexture, imageSize, GL::TextureFormat::RGBA32F);
+
+    fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, texCoordsTexture, 0)
+      .mapForDraw(GL::Framebuffer::ColorAttachment{0})
+      .bind();
+
+    CORRADE_INTERNAL_ASSERT(
+            fb.checkStatus(GL::FramebufferTarget::Draw) ==
+            GL::Framebuffer::Status::Complete);
+
+
+    Vector3ui wgCount1(imageSize.x(), imageSize.y(), 1);
+    Vector3ui wgCount2(textureSize.x(), textureSize.y(), 1);
+
+    const auto map = DebugTools::ColorMap::turbo();
+    const Vector2i mapSize{Int(map.size()), 1};
+
+    GL::Texture2D colorMapTexture;
+    colorMapTexture
+            .setMinificationFilter(SamplerFilter::Linear)
+            .setMagnificationFilter(SamplerFilter::Linear)
+            .setWrapping(SamplerWrapping::ClampToEdge) // or Repeat
+            .setStorage(1, GL::TextureFormat::RGB8, mapSize) // or SRGB8
+            .setSubImage(0, {}, ImageView2D{PixelFormat::RGB8Srgb, mapSize, map});
+
+    fb.clearColor(0, Color4{});
+
+    for(auto& kf : keyFrames){
+
+        fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+        texCoordsShader.setTransformationProjectionMatrix(projection * kf.pose.inverted())
+                       .bindColorMap(colorMapTexture)
+                       .setNumPrimitives(meshData.indexCount() / 3)
+                       .draw(mesh);
+
+        remap.bindTextureR(texR)
+             .bindTextureG(texG)
+             .bindTextureB(texB)
+             .bindTextureA(texA)
+             .bindImage(kf.image)
+             .bindTextureCoordinates(texCoordsTexture)
+             .dispatchCompute(wgCount1);
+    }
+
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+    combine.bindTextureR(texR)
+           .bindTextureG(texG)
+           .bindTextureB(texB)
+           .bindTextureA(texA)
+           .bindRgbaImage(texture)
+           .dispatchCompute(wgCount2);
+
+    //GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+}
+
 void Viewer::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
@@ -345,91 +422,13 @@ void Viewer::drawEvent() {
         stopTextInput();
 
     {
-        ScopedTimer t{"Averaging all colors", true};
-
-        Range2Di viewport{{}, imageSize};
-        GL::Framebuffer fb{viewport};
-        GL::Renderbuffer depthBuffer;
-
-        depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24,
-                               viewport.size());
-        fb.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth,
-                              depthBuffer);
-
-        GL::Texture2D texCoordsTexture;
-        setupTexture(texCoordsTexture, imageSize, GL::TextureFormat::RGBA32F);
-
-        fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, texCoordsTexture, 0)
-          .mapForDraw(GL::Framebuffer::ColorAttachment{0})
-          .bind();
-
-        CORRADE_INTERNAL_ASSERT(
-                fb.checkStatus(GL::FramebufferTarget::Draw) ==
-                GL::Framebuffer::Status::Complete);
-
-
-        Vector3ui wgCount1(imageSize.x(), imageSize.y(), 1);
-        Vector3ui wgCount2(textureSize.x(), textureSize.y(), 1);
-
-        const auto map = DebugTools::ColorMap::turbo();
-        const Vector2i mapSize{Int(map.size()), 1};
-
-        GL::Texture2D colorMapTexture;
-        colorMapTexture
-                .setMinificationFilter(SamplerFilter::Linear)
-                .setMagnificationFilter(SamplerFilter::Linear)
-                .setWrapping(SamplerWrapping::ClampToEdge) // or Repeat
-                .setStorage(1, GL::TextureFormat::RGB8, mapSize) // or SRGB8
-                .setSubImage(0, {}, ImageView2D{PixelFormat::RGB8Srgb, mapSize, map});
-
-        fb.clearColor(0, Color4{});
-
-        for(int i = 0; i < poses.size(); ++i){
-
-            fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
-            texCoordsShader.setTransformationProjectionMatrix(projection * poses[i].inverted())
-                           .bindColorMap(colorMapTexture)
-                           .setNumPrimitives(meshData.indexCount() / 3)
-                           .draw(mesh);
-
-            remap.bindTextureR(texR)
-                 .bindTextureG(texG)
-                 .bindTextureB(texB)
-                 .bindTextureA(texA)
-                 .bindImage(imageTextures[i])
-                 .bindTextureCoordinates(texCoordsTexture)
-                 .dispatchCompute(wgCount1);
-        }
-
-        glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-        combine.bindTextureR(texR)
-               .bindTextureG(texG)
-               .bindTextureB(texB)
-               .bindTextureA(texA)
-               .bindRgbaImage(texture)
-               .dispatchCompute(wgCount2);
-
-        //GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
-        glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-        fb.clear(GL::FramebufferClear::Color);
-        //auto coordsImage = texCoordsTexture.image(0,PixelFormat::RGBA32F);
-        //for(auto row : coordsImage.pixels<Color4>()){
-        //    for(auto& p : row){
-        //        Debug{} << p;
-        //    }
-        //}
-        //std::abort();
-
         GL::defaultFramebuffer.bind();
         if(!showTexture){
             camera->update();
             camera->draw(drawables);
         } else {
-            GL::defaultFramebuffer.bind();
             ::Shaders::ScreenTriangle triangleShader;
-            triangleShader.bindTexture(texture)
+            triangleShader.bindTexture(keyFrames[0].derivativeX)
                           .draw(GL::Mesh{}.setCount(3));
         }
 

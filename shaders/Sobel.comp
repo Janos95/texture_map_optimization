@@ -1,0 +1,37 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(rgba32f, binding = 0)
+uniform readonly image2D image;
+
+layout(rgba32f, binding = 1)
+uniform writeonly image2D derivativeX;
+
+layout(rgba32f, binding = 2)
+uniform writeonly image2D derivativeY;
+
+void main()
+{
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    int x = coords.x;
+    int y = coords.y;
+
+    vec4 derX = vec4(0);
+    vec4 derY = vec4(0);
+
+    /* Note: Load operations from any texel that is outside of the boundaries of the bound image will return all zeros. */
+
+    vec4 upperLeft = imageLoad(image, ivec2(x-1,y+1));
+    vec4 upperMiddle = imageLoad(image, ivec2(x,y+1));
+    vec4 upperRight = imageLoad(image, ivec2(x+1,y+1));
+    vec4 left = imageLoad(image, ivec2(x-1,y));
+    vec4 right = imageLoad(image, ivec2(x+1,y));
+    vec4 lowerLeft = imageLoad(image, ivec2(x-1,y-1));
+    vec4 lowerMiddle = imageLoad(image, ivec2(x,y-1));
+    vec4 lowerRight = imageLoad(image, ivec2(x+1,y-1));
+
+    derX = upperLeft + 2*left + lowerLeft - upperRight - 2*right - lowerRight;
+    derY = upperLeft + 2*upperMiddle + upperRight - lowerRight - 2*lowerMiddle - lowerRight;
+
+    imageStore(derivativeX, coords, derX);
+    imageStore(derivativeY, coords, derY);
+}
