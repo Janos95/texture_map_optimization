@@ -1,0 +1,29 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(r32f, binding = 0)
+uniform readonly image2D texR;
+
+layout(r32f, binding = 1)
+uniform readonly image2D texG;
+
+layout(r32f, binding = 2)
+uniform readonly image2D texB;
+
+layout(r32f, binding = 3)
+uniform readonly image2D texA;
+
+layout(rgba32f, binding = 4)
+uniform writeonly image2D imageRgba;
+
+void main()
+{
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    vec3 color;
+    float count = imageLoad(texA, coords).r;
+    if(count < 1){
+        color = vec3(0);
+    } else {
+        color = vec3(imageLoad(texR, coords).r, imageLoad(texG, coords).r, imageLoad(texB, coords).r)/count;
+    }
+    imageStore(imageRgba, coords, vec4(color,1));
+}

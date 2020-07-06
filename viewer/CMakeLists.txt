@@ -28,6 +28,7 @@ target_link_libraries(viewer
             MagnumPlugins::StbImageConverter
             tmo::shaders
             tmo::io
+            scoped_timer::scoped_timer
         )
 
 add_library(tmo::viewer ALIAS viewer)

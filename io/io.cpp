@@ -17,9 +17,9 @@
 
 using namespace Magnum;
 using namespace Corrade;
-namespace Directory=Corrade::Utility::Directory;
+namespace Directory = Corrade::Utility::Directory;
 
-Containers::Optional<Trade::MeshData> loadMeshData(const std::string& path){
+Containers::Optional<Trade::MeshData> loadMeshData(const std::string& path) {
     PluginManager::Manager<Trade::AbstractImporter> manager;
     auto importer = manager.loadAndInstantiate("AssimpImporter");
     if(!importer) std::exit(1);
@@ -35,7 +35,8 @@ Containers::Optional<Trade::MeshData> loadMeshData(const std::string& path){
 }
 
 
-Containers::Optional<Magnum::Trade::ImageData2D> loadHdrImage(const std::string& path){
+Containers::Optional<Magnum::Trade::ImageData2D>
+loadHdrImage(const std::string& path) {
     PluginManager::Manager<Trade::AbstractImporter> manager;
     auto importer = manager.loadAndInstantiate("HdrImporter");
     if(!importer){
@@ -50,18 +51,22 @@ Containers::Optional<Magnum::Trade::ImageData2D> loadHdrImage(const std::string&
     return importer->image2D(0);
 }
 
-Containers::Array<Magnum::Trade::ImageData2D> loadImages(const std::string& dir){
+Containers::Array<Magnum::Trade::ImageData2D>
+loadImages(const std::string& dir) {
     PluginManager::Manager<Trade::AbstractImporter> manager;
     auto importer = manager.loadAndInstantiate("JpegImporter");
     if(!importer){
         Debug{} << "Could not instantiate importer";
         std::exit(1);
     }
-    auto files = Directory::list(dir, Directory::Flag::SkipDirectories|Directory::Flag::SkipSpecial|Directory::Flag::SortAscending);
+    auto files = Directory::list(dir, Directory::Flag::SkipDirectories |
+                                      Directory::Flag::SkipSpecial |
+                                      Directory::Flag::SortAscending);
     Containers::Array<Trade::ImageData2D> images;
     for(auto const& file : files){
         auto path = Directory::join(dir, file);
-        if(!importer->openFile(path) || !importer->image2DCount() || !importer->image2D(0))
+        if(!importer->openFile(path) || !importer->image2DCount() ||
+           !importer->image2D(0))
             continue;
 
         auto data = importer->image2D(0);
@@ -72,12 +77,11 @@ Containers::Array<Magnum::Trade::ImageData2D> loadImages(const std::string& dir)
     return images;
 }
 
-Containers::Array<Matrix4> loadPoses(std::string const& path)
-{
+Containers::Array<Matrix4> loadPoses(std::string const& path) {
     std::ifstream file(path);
     Containers::Array<Matrix4> tfs;
     int dummy;
-    while(file >> dummy >> dummy >> dummy)  {
+    while(file >> dummy >> dummy >> dummy){
         Matrix4 tf;
         file >> tf[0][0] >> tf[1][0] >> tf[2][0] >> tf[3][0] >>
              tf[0][1] >> tf[1][1] >> tf[2][1] >> tf[3][1] >>

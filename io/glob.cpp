@@ -13,17 +13,15 @@ std::vector<std::string> glob(
         const std::string& path,
         const std::string& extension,
         std::vector<std::string> paths,
-        bool recurse)
-{
+        bool recurse) {
     using namespace Corrade::Utility;
     paths.clear();
-    for(const auto& path: Directory::list(path))
-    {
+    for(const auto& path: Directory::list(path)){
         if(Directory::isDirectory(path) && recurse){
             glob(path, extension, paths, recurse);
             continue;
         }
-        auto [_, ext] = Directory::splitExtension(path);
+        auto[_, ext] = Directory::splitExtension(path);
 
         if(extension == ext)
             paths.push_back(std::move(path));

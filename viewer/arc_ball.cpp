@@ -13,19 +13,19 @@ using namespace Magnum;
 namespace {
 
 /* Project a point in NDC onto the arcball sphere */
-    Quaternion ndcToArcBall(const Vector2& p) {
-        const Float dist = Math::dot(p, p);
+Quaternion ndcToArcBall(const Vector2& p) {
+    const Float dist = Math::dot(p, p);
 
-        /* Point is on sphere */
-        if(dist <= 1.0f)
-            return {{p.x(), p.y(), Math::sqrt(1.0f - dist)}, 0.0f};
+    /* Point is on sphere */
+    if(dist <= 1.0f)
+        return {{p.x(), p.y(), Math::sqrt(1.0f - dist)}, 0.0f};
 
-            /* Point is outside sphere */
-        else {
-            const Vector2 proj = p.normalized();
-            return {{proj.x(), proj.y(), 0.0f}, 0.0f};
-        }
+        /* Point is outside sphere */
+    else {
+        const Vector2 proj = p.normalized();
+        return {{proj.x(), proj.y(), 0.0f}, 0.0f};
     }
+}
 
 }
 

@@ -4,7 +4,10 @@
 
 #include "viewer.h"
 #include "io.h"
-#include "divide_by_alpha.h"
+#include "Remap.h"
+#include "ScreenTriangle.h"
+
+#include <scoped_timer/scoped_timer.hpp>
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Containers/GrowableArray.h>
@@ -19,9 +22,13 @@
 #include <Magnum/Math/FunctionsBatch.h>
 #include <Magnum/Primitives/Capsule.h>
 #include <Magnum/Primitives/Cube.h>
+#include <Magnum/Primitives/Axis.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/MeshTools/FlipNormals.h>
+#include <Magnum/MeshTools/Duplicate.h>
 #include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/GL/Framebuffer.h>
+#include <Magnum/DebugTools/ColorMap.h>
 #include <Magnum/Image.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
 
@@ -30,7 +37,8 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/ImageView.h>
-#include <Magnum/Image.h>
+
+#include <random>
 
 using namespace Corrade;
 using namespace Magnum;
@@ -39,36 +47,44 @@ using namespace Math::Literals;
 
 using namespace Corrade::Containers;
 
-Matrix4 computeProjectionMatrix(float width, float height, float fx, float fy, float cx, float cy)
-{
-    // Source: https://blog.noctua-software.com/opencv-opengl-projection-matrix.html
+
+Matrix4
+computeProjectionMatrix(float nx, float ny, float fx, float fy, float cx, float cy) {
     constexpr float zfar = 10.0f;
-    constexpr float znear = 0.1;
+    constexpr float znear = 0.01;
 
-    Matrix4 P(Mg::Math::ZeroInit);
-    P[0][0] = 2.0 * fx / width;
-    P[1][1] = -2.0 * fy / height;
-    P[2][0] = 1.0 - 2.0 * cx / width;
-    P[2][1] = 2.0 * cy / height - 1.0;
-    P[2][2] = (zfar + znear) / (znear - zfar);
-    P[2][3] = -1.0;
-    P[3][2] = 2.0 * zfar * znear / (znear - zfar);
+    Matrix4 P = {
+             {fx/nx, 0, 0, 0},
+             {0, fy/ny, 0, 0},
+             {-cx, -cy, (znear + zfar)/(znear - zfar), -1},
+            {0, 0, 2*znear*zfar / (znear - zfar), 0}
+    };
 
+    auto fov = Math::atan(nx / (2*fx));
+    return Matrix4::perspectiveProjection(2*fov, nx/ny, 0.01, 10);
     return P;
 }
 
+void setupTexture(GL::Texture2D& texture, Vector2i const& size, GL::TextureFormat format){
+    texture.setMagnificationFilter(GL::SamplerFilter::Linear)
+           .setMinificationFilter(GL::SamplerFilter::Linear)
+           .setWrapping(GL::SamplerWrapping::ClampToEdge)
+           .setStorage(1, format, size);
+}
 
-Viewer::Viewer(int argc, char** argv): Platform::Application{{argc,argv},Mg::NoCreate}{
+
+Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
+                                                              Mg::NoCreate} {
     /* Setup window */
     {
         const Vector2 dpiScaling = this->dpiScaling({});
         Configuration conf;
         conf.setTitle("Viewer")
-                .setSize(conf.size(), dpiScaling)
-                .setWindowFlags(Configuration::WindowFlag::Resizable);
+            .setSize(conf.size(), dpiScaling)
+            .setWindowFlags(Configuration::WindowFlag::Resizable);
         GLConfiguration glConf;
-        glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
-        if(!tryCreate(conf, glConf)) {
+        //glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
+        if(!tryCreate(conf, glConf)){
             create(conf, glConf.setSampleCount(0));
         }
     }
@@ -83,91 +99,76 @@ Viewer::Viewer(int argc, char** argv): Platform::Application{{argc,argv},Mg::NoC
     }
 
     /* setup texture that will be optimized */
-    Vector2i size{1024,1024};
     {
-        Containers::Array<char> data(Containers::NoInit, size.product() * 4 * sizeof(float));
-        for(auto& x : Containers::arrayCast<float>(data))
-            x = 0.1f;
-        Image2D image{PixelFormat::RGBA32F, size, std::move(data)};
-        shader = Shaders::Flat3D{Shaders::Flat3D::Flag::Textured};
-        texture = GL::Texture2D{};
-        texture.setMagnificationFilter(GL::SamplerFilter::Linear)
-               .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
-               .setWrapping(GL::SamplerWrapping::ClampToEdge)
-               .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
-               .setStorage(1, GL::TextureFormat::RGBA32F, size)
-               .setSubImage(0, {}, image);
+        Vector2i size = Vector2i{1024, 1024};
+        shader = Magnum::Shaders::Flat3D{Magnum::Shaders::Flat3D::Flag::Textured};
+        phong = Magnum::Shaders::Phong{Magnum::Shaders::Phong::Flag::DiffuseTexture};
+
+        GL::Framebuffer fb({{}, texture.imageSize(0)});
+
+        using L = std::initializer_list<std::pair<GL::Texture2D*, GL::TextureFormat>>;
+        for(auto [tex, format] : L{
+                                    {&texture, GL::TextureFormat::RGBA32F},
+                                    {&texR, GL::TextureFormat::R32F},
+                                    {&texG, GL::TextureFormat::R32F},
+                                    {&texB, GL::TextureFormat::R32F},
+                                    {&texA, GL::TextureFormat::R32F}
+                                  })
+        {
+            *tex = GL::Texture2D{};
+            setupTexture(*tex, size, format);
+
+            fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, *tex, 0)
+              .clearColor(0, Color4{})
+              .clear(GL::FramebufferClear::Color);
+        }
     }
 
     /* setup scene*/
     {
-        auto images = loadImages("/home/janos/texture_map_optimization/assets/fountain_small/image");
+        auto images = loadImages(
+                "/home/janos/texture_map_optimization/assets/fountain_small/image");
         Vector2i imageSize = images.front().size();
-        Debug{} << "expected size " << Vector2i{640,480} << ", got " << imageSize;
+        Debug{} << "expected size " << Vector2i{640, 480} << ", got "
+                << imageSize;
 
         Containers::arrayResize(imageTextures, images.size());
-        for (std::size_t i = 0; i < images.size(); ++i) {
-            imageTextures[i].setMagnificationFilter(GL::SamplerFilter::Linear)
-                            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
-                            .setWrapping(GL::SamplerWrapping::ClampToEdge)
-                            .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
-                            .setStorage(1, GL::TextureFormat::RGBA32F, imageSize)
-                            .setSubImage(0, {}, images[i]);
+        for(std::size_t i = 0; i < images.size(); ++i){
+            setupTexture(imageTextures[i], imageSize, GL::TextureFormat::RGBA32F);
+            imageTextures[i].setSubImage(0, {}, images[i]);
+            //imageTextures[i].setMagnificationFilter(GL::SamplerFilter::Linear)
+            //                .setMinificationFilter(GL::SamplerFilter::Linear,
+            //                                       GL::SamplerMipmap::Linear)
+            //                .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            //                .setStorage(1, GL::TextureFormat::RGBA32F,
+            //                            imageSize)
+            //                .setSubImage(0, {}, images[i]);
         }
 
-        meshData = *loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/integrated.ply");
-        mesh = MeshTools::compile(meshData, MeshTools::CompileFlag::GenerateSmoothNormals);
+        meshData = *loadMeshData(
+                "/home/janos/texture_map_optimization/assets/fountain_small/scene/blender.ply");
+        //MeshTools::flipFaceWindingInPlace(meshData.mutableIndices());
+        //meshData = MeshTools::duplicate(md);
+        mesh = MeshTools::compile(meshData,
+                                  MeshTools::CompileFlag::GenerateSmoothNormals);
         drawable = new FlatDrawable(scene, mesh, shader, &drawables);
         drawable->texture = &texture;
-        poses = loadPoses("/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
-        projection = computeProjectionMatrix(640.f, 480.f, 525.f, 525.f, 319.5f, 239.5f);
+        poses = loadPoses(
+                "/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
+        projection = computeProjectionMatrix(640.f, 480.f, 525.f, 525.f, 319.5f,239.5f);
 
-        Range2Di viewport{{}, imageSize};
-        GL::Texture2D colors[2];
-        GL::Framebuffer fb{viewport};
-        GL::Renderbuffer depthBuffer;
-        averageColor = shaders::AverageColor{};
+        texCoordsShader = ::Shaders::TextureCoordinates{};
+        remap = ::Shaders::Remap{};
+        combine = ::Shaders::Combine{};
 
-        depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport.size());
-        fb.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
-
-        for (auto& color : colors) {
-            color.setStorage(1, GL::TextureFormat::RGBA32F, size)
-                 .setWrapping(GL::SamplerWrapping::ClampToEdge)
-                 .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
-                 .setMagnificationFilter(GL::SamplerFilter::Linear);
+        cs = MeshTools::compile(Primitives::axis3D());
+        vertexColored = Magnum::Shaders::VertexColor3D{};
+        for(auto& tf : poses){
+            tf = tf * Matrix4::scaling({1,-1,1}) * Matrix4::reflection({0,0,1});
+            auto obj = new Object(&scene);
+            obj->scale({.1,.1,.1}).transform(tf);
+            new VertexColorDrawable(*obj, cs, vertexColored, &drawables);
         }
-
-        fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, colors[0], 0)
-          .clearColor(0, Color4{})
-          .clear(GL::FramebufferClear::Color);
-
-        for (int i = 0; i < poses.size(); ++i) {
-            int last = i % 2;
-            int current = (i+1) % 2;
-
-            fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, colors[current], 0)
-              .mapForDraw(GL::Framebuffer::ColorAttachment{0})
-              .clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth)
-              .bind();
-
-            CORRADE_INTERNAL_ASSERT(fb.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
-
-            averageColor.setTransformationMatrix(poses[i])
-                        .setProjectionMatrix(projection)
-                        .bindColors(colors[last])
-                        .bindImage(imageTextures[i])
-                        .draw(mesh);
-        }
-
-        shaders::DivideByAlpha divide;
-        Vector2ui s{size};
-        Debug{} << "texture size " << s;
-        /* @todo do I need a framebuffer ? */
-        divide.bindInput(colors[poses.size()%2])
-              .bindOutput(texture)
-              .dispatchCompute({s.x(), s.y(), 1});
-        GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
     }
 
     /* Setup ImGui, load a better font */
@@ -179,13 +180,15 @@ Viewer::Viewer(int argc, char** argv): Platform::Application{{argc,argv},Mg::NoC
         fontConfig.FontDataOwnedByAtlas = false;
         const Vector2 size = Vector2{windowSize()}/dpiScaling();
         Utility::Resource rs{"fonts"};
-        Containers::ArrayView<const char> font = rs.getRaw("SourceSansPro-Regular.ttf");
+        Containers::ArrayView<const char> font = rs.getRaw(
+                "SourceSansPro-Regular.ttf");
         ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
                 const_cast<char*>(font.data()), Int(font.size()),
                 20.0f*framebufferSize().x()/size.x(), &fontConfig);
 
         imgui = ImGuiIntegration::Context{*ImGui::GetCurrentContext(),
-                                          Vector2{windowSize()}/dpiScaling(), windowSize(), framebufferSize()};
+                                          Vector2{windowSize()}/dpiScaling(),
+                                          windowSize(), framebufferSize()};
 
         /* Setup proper blending to be used by ImGui */
         GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
@@ -195,7 +198,6 @@ Viewer::Viewer(int argc, char** argv): Platform::Application{{argc,argv},Mg::NoC
 
     }
 
-    GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
@@ -205,9 +207,7 @@ Viewer::Viewer(int argc, char** argv): Platform::Application{{argc,argv},Mg::NoC
 }
 
 void Viewer::drawOptions() {
-    if(ImGui::Button("Hot-Reload Shader")){
-
-    }
+    ImGui::Checkbox("Show Texture", &showTexture);
 }
 
 void Viewer::viewportEvent(ViewportEvent& event) {
@@ -221,7 +221,7 @@ void Viewer::viewportEvent(ViewportEvent& event) {
 
 
 void Viewer::keyPressEvent(KeyEvent& event) {
-    if(imgui.handleKeyPressEvent(event)) {
+    if(imgui.handleKeyPressEvent(event)){
         event.setAccepted();
         return;
     }
@@ -230,15 +230,16 @@ void Viewer::keyPressEvent(KeyEvent& event) {
 
     switch(event.key()) {
         case KeyEvent::Key::L:
-            if(camera->lagging() > 0.0f) {
+            if(camera->lagging() > 0.0f){
                 Debug{} << "Lagging disabled";
                 camera->setLagging(0.0f);
-            } else {
+            } else{
                 Debug{} << "Lagging enabled";
                 camera->setLagging(0.85f);
             }
             break;
         case KeyEvent::Key::R:
+            showTexture = !showTexture;
             camera->reset();
             break;
         default:
@@ -250,14 +251,14 @@ void Viewer::keyPressEvent(KeyEvent& event) {
 }
 
 void Viewer::keyReleaseEvent(KeyEvent& event) {
-    if(imgui.handleKeyReleaseEvent(event)) {
+    if(imgui.handleKeyReleaseEvent(event)){
         event.setAccepted();
         return;
     }
 }
 
 void Viewer::textInputEvent(TextInputEvent& event) {
-    if(imgui.handleTextInputEvent(event)) {
+    if(imgui.handleTextInputEvent(event)){
         event.setAccepted();
         return;
     }
@@ -283,15 +284,15 @@ void Viewer::mousePressEvent(MouseEvent& event) {
 }
 
 void Viewer::mouseReleaseEvent(MouseEvent& event) {
-    if(imgui.handleMouseReleaseEvent(event)) {
+    if(imgui.handleMouseReleaseEvent(event)){
         event.setAccepted();
         return;
     }
 
-    if(event.button() == MouseEvent::Button::Middle) {
+    if(event.button() == MouseEvent::Button::Middle){
         /* Disable mouse capture again */
         /** @todo replace once https://github.com/mosra/magnum/pull/419 is in */
-        if (trackingMouse) {
+        if(trackingMouse){
             SDL_CaptureMouse(SDL_FALSE);
             trackingMouse = false;
             event.setAccepted();
@@ -305,8 +306,8 @@ void Viewer::mouseMoveEvent(MouseMoveEvent& event) {
         return;
     }
 
-    if(trackingMouse) {
-        if (event.modifiers() & MouseMoveEvent::Modifier::Shift)
+    if(trackingMouse){
+        if(event.modifiers() & MouseMoveEvent::Modifier::Shift)
             camera->translate(event.position());
         else camera->rotate(event.position());
 
@@ -316,7 +317,7 @@ void Viewer::mouseMoveEvent(MouseMoveEvent& event) {
 }
 
 void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
-    if(imgui.handleMouseScrollEvent(event)) {
+    if(imgui.handleMouseScrollEvent(event)){
         /* Prevent scrolling the page */
         event.setAccepted();
         return;
@@ -334,18 +335,105 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
 }
 
 void Viewer::drawEvent() {
-    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth);
-    imgui.newFrame();
+    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
+    imgui.newFrame();
     /* Enable text input, if needed */
     if(ImGui::GetIO().WantTextInput && !isTextInputActive())
         startTextInput();
     else if(!ImGui::GetIO().WantTextInput && isTextInputActive())
         stopTextInput();
 
-    /* draw scene */
-    camera->update();
-    camera->draw(drawables);
+    {
+        ScopedTimer t{"Averaging all colors", true};
+
+        Range2Di viewport{{}, imageSize};
+        GL::Framebuffer fb{viewport};
+        GL::Renderbuffer depthBuffer;
+
+        depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24,
+                               viewport.size());
+        fb.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth,
+                              depthBuffer);
+
+        GL::Texture2D texCoordsTexture;
+        setupTexture(texCoordsTexture, imageSize, GL::TextureFormat::RGBA32F);
+
+        fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, texCoordsTexture, 0)
+          .mapForDraw(GL::Framebuffer::ColorAttachment{0})
+          .bind();
+
+        CORRADE_INTERNAL_ASSERT(
+                fb.checkStatus(GL::FramebufferTarget::Draw) ==
+                GL::Framebuffer::Status::Complete);
+
+
+        Vector3ui wgCount1(imageSize.x(), imageSize.y(), 1);
+        Vector3ui wgCount2(textureSize.x(), textureSize.y(), 1);
+
+        const auto map = DebugTools::ColorMap::turbo();
+        const Vector2i mapSize{Int(map.size()), 1};
+
+        GL::Texture2D colorMapTexture;
+        colorMapTexture
+                .setMinificationFilter(SamplerFilter::Linear)
+                .setMagnificationFilter(SamplerFilter::Linear)
+                .setWrapping(SamplerWrapping::ClampToEdge) // or Repeat
+                .setStorage(1, GL::TextureFormat::RGB8, mapSize) // or SRGB8
+                .setSubImage(0, {}, ImageView2D{PixelFormat::RGB8Srgb, mapSize, map});
+
+        fb.clearColor(0, Color4{});
+
+        for(int i = 0; i < poses.size(); ++i){
+
+            fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+            texCoordsShader.setTransformationProjectionMatrix(projection * poses[i].inverted())
+                           .bindColorMap(colorMapTexture)
+                           .setNumPrimitives(meshData.indexCount() / 3)
+                           .draw(mesh);
+
+            remap.bindTextureR(texR)
+                 .bindTextureG(texG)
+                 .bindTextureB(texB)
+                 .bindTextureA(texA)
+                 .bindImage(imageTextures[i])
+                 .bindTextureCoordinates(texCoordsTexture)
+                 .dispatchCompute(wgCount1);
+        }
+
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+        combine.bindTextureR(texR)
+               .bindTextureG(texG)
+               .bindTextureB(texB)
+               .bindTextureA(texA)
+               .bindRgbaImage(texture)
+               .dispatchCompute(wgCount2);
+
+        //GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+        fb.clear(GL::FramebufferClear::Color);
+        //auto coordsImage = texCoordsTexture.image(0,PixelFormat::RGBA32F);
+        //for(auto row : coordsImage.pixels<Color4>()){
+        //    for(auto& p : row){
+        //        Debug{} << p;
+        //    }
+        //}
+        //std::abort();
+
+        GL::defaultFramebuffer.bind();
+        if(!showTexture){
+            camera->update();
+            camera->draw(drawables);
+        } else {
+            GL::defaultFramebuffer.bind();
+            ::Shaders::ScreenTriangle triangleShader;
+            triangleShader.bindTexture(texture)
+                          .draw(GL::Mesh{}.setCount(3));
+        }
+
+    }
 
     drawOptions();
     imgui.updateApplicationCursor(*this);

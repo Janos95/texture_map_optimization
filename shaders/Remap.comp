@@ -1,0 +1,32 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(rgba32f, binding = 0)
+uniform readonly image2D image;
+
+layout(rgba32f, binding = 1)
+uniform readonly image2D textureCoordinates;
+
+layout(r32f, binding = 2)
+uniform coherent image2D texR;
+
+layout(r32f, binding = 3)
+uniform coherent image2D texG;
+
+layout(r32f, binding = 4)
+uniform coherent image2D texB;
+
+layout(r32f, binding = 5)
+uniform coherent image2D texA;
+
+void main()
+{
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    vec4 color = imageLoad(image, coords);
+    vec2 texCoordsInterpolated = vec2(imageSize(texR)) * imageLoad(textureCoordinates, coords).rg;
+    ivec2 texCoords = ivec2(round(texCoordsInterpolated.x), round(texCoordsInterpolated.y));
+    //imageStore(tex, texCoords, color);
+    imageAtomicAdd(texR, texCoords, color.r);
+    imageAtomicAdd(texG, texCoords, color.g);
+    imageAtomicAdd(texB, texCoords, color.b);
+    imageAtomicAdd(texA, texCoords, 1.);
+}
