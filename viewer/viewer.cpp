@@ -7,6 +7,7 @@
 #include "Remap.h"
 #include "ScreenTriangle.h"
 #include "Sobel.h"
+#include "Reduction.h"
 
 #include <scoped_timer/scoped_timer.hpp>
 
@@ -196,6 +197,7 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
         imgui = ImGuiIntegration::Context{*ImGui::GetCurrentContext(),
                                           Vector2{windowSize()}/dpiScaling(),
                                           windowSize(), framebufferSize()};
+
 
         /* Setup proper blending to be used by ImGui */
         GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
@@ -414,6 +416,7 @@ void Viewer::averageColors() {
 void Viewer::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
+
     imgui.newFrame();
     /* Enable text input, if needed */
     if(ImGui::GetIO().WantTextInput && !isTextInputActive())
@@ -422,16 +425,25 @@ void Viewer::drawEvent() {
         stopTextInput();
 
     {
-        GL::defaultFramebuffer.bind();
-        if(!showTexture){
+        GL::Texture2D testTexture;
+        testTexture.setMagnificationFilter(GL::SamplerFilter::Linear)
+                   .setMinificationFilter(GL::SamplerFilter::Linear)
+                   .setWrapping(GL::SamplerWrapping::ClampToEdge)
+                   .setStorage(1, GL::TextureFormat::R32F, {4096, 4096});
+        glClearTexImage(testTexture.id(), 0, GL_RED, GL_FLOAT, Mg::Color4{1}.data());
+        auto sum = reduce(testTexture);
+    }
+
+    {
+        if(false && !showTexture) {
             camera->update();
-            camera->draw(drawables);
+            //camera->draw(drawables);
         } else {
+            auto& tex = showTexture ? keyFrames[0].derivativeY : keyFrames[0].derivativeX;
             ::Shaders::ScreenTriangle triangleShader;
-            triangleShader.bindTexture(keyFrames[0].derivativeX)
+            triangleShader.bindTexture(tex)
                           .draw(GL::Mesh{}.setCount(3));
         }
-
     }
 
     drawOptions();

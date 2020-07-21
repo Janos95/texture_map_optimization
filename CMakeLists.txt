@@ -6,12 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/modules)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Eigen3 CONFIG REQUIRED)
 find_package(Corrade CONFIG REQUIRED PluginManager Containers TestSuite Utility)
 find_package(Magnum CONFIG REQUIRED GL SceneGraph MeshTools Sdl2Application Shaders Primitives DebugTools)
-find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter StbImageImporter StbImageConverter)
-find_package(MagnumIntegration CONFIG REQUIRED ImGui Eigen)
-find_package(ImGui REQUIRED COMPONENTS SourcesMiscCpp)
+find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
+find_package(MagnumIntegration CONFIG REQUIRED ImGui)
 
 find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
@@ -19,19 +17,14 @@ add_subdirectory(scoped_timer)
 add_subdirectory(io)
 add_subdirectory(shaders)
 add_subdirectory(viewer)
-#add_subdirectory(optimization)
+add_subdirectory(optimization)
 
 
-add_executable(texture_map_optimization
-        main.cpp generate_trivial_texture.hpp)
+add_executable(tmo main.cpp)
 
-set_property(TARGET texture_map_optimization PROPERTY CXX_STANDARD 17)
-
-target_link_libraries(texture_map_optimization PUBLIC
+target_link_libraries(tmo PUBLIC
         Magnum::Magnum
         tmo::io
         tmo::viewer
-        #tmo::optimization
-        Eigen3::Eigen
-        ceres)
+        tmo::optimization)
 

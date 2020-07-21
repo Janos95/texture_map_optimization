@@ -1,7 +1,3 @@
-//
-// Created by janos on 2/16/20.
-//
-
 #include "arc_ball.h"
 
 #include <Magnum/Math/Matrix3.h>

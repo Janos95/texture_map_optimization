@@ -1,8 +1,3 @@
-//
-// Created by janos on 2/16/20.
-//
-
-
 #pragma once
 
 #include "arc_ball.h"

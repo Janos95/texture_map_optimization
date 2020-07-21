@@ -1,0 +1,33 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(rg32f, binding = 0)
+uniform readonly image2DArray jac;
+
+layout(rgb32f, binding = 0)
+uniform readonly image2D sobelX;
+
+layout(rgb32f, binding = 0)
+uniform readonly image2D sobelX;
+
+layout(rgb32f, binding = 1)
+uniform readonly image2D sobelY;
+
+layout(rgb32f, binding = 2)
+uniform readonly image2D depth;
+
+layout(rgb32f, binding = 3)
+uniform writeonly image2D gradRotation;
+
+layout(rgb32f, binding = 4)
+uniform writeonly image2D gradTranslation;
+
+void main()
+{
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+
+    mat3x2 IwrtRot = mat3x2(imageLoad(jac, ivec3(coord, 0)), imageLoad(jac, ivec3(coord, 1)), imageLoad(jac, ivec3(coord, 2)));
+    mat3x2 IwrtTrans = mat3x2(imageLoad(jac, ivec3(coord,3)), imageLoad(jac, ivec3(coord, 4)), imageLoad(jac, ivec3(coord, 5)));
+
+    imageStore(gradRotation, coord, vec4(, 0));
+    imageStore(gradTranslation, coord, vec4(, 0));
+}

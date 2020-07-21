@@ -11,29 +11,29 @@
 
 namespace Mg = Magnum;
 
-namespace Shaders {
+namespace shaders {
 
-class DiffShader : public Mg::GL::AbstractShaderProgram {
+class Diff : public Mg::GL::AbstractShaderProgram {
 public:
 
     using Position = Mg::Shaders::Generic3D::Position;
     using TextureCoordinates = Mg::Shaders::Generic3D::TextureCoordinates;
 
-    DiffShader();
+    Diff();
 
-    DiffShader &setRvec(const Mg::Vector3 &);
+    Diff &setRvec(const Mg::Vector3 &);
 
-    DiffShader &setTvec(const Mg::Vector3 &);
+    Diff &setTvec(const Mg::Vector3 &);
 
-    DiffShader & setProjectionMatrix(float fx, float fy, float cx, float cy, float width, float height) {
+    Diff & setProjectionMatrix(float fx, float fy, float cx, float cy, float width, float height) {
         return *this;
     }
 
-    DiffShader &bindImageGradientX(Mg::GL::Texture2D &imageGradientX) { return *this; }
+    Diff &bindImageGradientX(Mg::GL::Texture2D &imageGradientX) { return *this; }
 
-    DiffShader &bindImageGradientY(Mg::GL::Texture2D &imageGradientY) { return *this; }
+    Diff &bindImageGradientY(Mg::GL::Texture2D &imageGradientY) { return *this; }
 
-    DiffShader &setTextureSize(Mg::VectorTypeFor<2, Mg::Int> const& size);
+    Diff &setTextureSize(Mg::VectorTypeFor<2, Mg::Int> const& size);
 
 
 private:

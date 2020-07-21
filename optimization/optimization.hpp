@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "viewer.hpp"
 #include "cost.hpp"
 
 #include <Corrade/Containers/ArrayView.h>
@@ -18,44 +17,10 @@
 #include <ceres/problem.h>
 #include <ceres/solver.h>
 
-#include <opencv2/core/mat.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
-
 #include <thread>
 
 using namespace Magnum;
 using namespace Corrade;
-
-struct Frame
-{
-    Frame(cv::Mat_<cv::Vec3f> img, Matrix4 t): image(img), tf(t)
-    {
-        //some blur to remove noise
-        cv::GaussianBlur(img, img, cv::Size(3,3), 0, 0, cv::BORDER_DEFAULT);
-
-        //compute numeric gradients using scharr filter
-        std::vector<cv::Mat_<float>> rgb, channelsDx(3), channelsDy(3);
-        cv::split(img, rgb);
-        for(int i = 0; i < 3; ++i){
-            cv::Mat_<float> cdx, cdy;
-            cv::Scharr(rgb[i], channelsDx[i], -1, 1, 0);
-            cv::Scharr(rgb[i], channelsDy[i], -1, 0, 1);
-        }
-        cv::merge(channelsDx, xderiv);
-        cv::merge(channelsDy, yderiv);
-
-        //compress rigid transformation to 6 degrees of freedom
-        cv::Matx33d rot;
-        std::copy_n(tf.rotation().data(), 9, rot.val);
-        cv::Rodrigues(rot, rvec);
-        std::copy_n(tf.translation().data(), 3, tvec.val);
-
-    }
-    cv::Mat_<cv::Vec3f> image, xderiv, yderiv;
-    Matrix4 tf;
-    cv::Vec3d rvec, tvec;
-};
 
 cv::Vec4d compressCameraMatrix(Matrix3& cameraMatrix);
 

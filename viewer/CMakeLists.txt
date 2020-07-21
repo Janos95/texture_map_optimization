@@ -25,9 +25,9 @@ target_link_libraries(viewer
             Magnum::Primitives
             Magnum::DebugTools
             MagnumIntegration::ImGui
-            MagnumPlugins::StbImageConverter
             tmo::shaders
             tmo::io
+            tmo::optimization
             scoped_timer::scoped_timer
         )
 
