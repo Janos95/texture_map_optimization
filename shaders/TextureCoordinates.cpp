@@ -15,7 +15,7 @@
 
 using namespace Magnum;
 
-namespace Shaders{
+namespace shaders{
 
 TextureCoordinates::TextureCoordinates() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL460);
@@ -40,15 +40,6 @@ TextureCoordinates::TextureCoordinates() {
 
 TextureCoordinates& TextureCoordinates::setTransformationProjectionMatrix(Mg::Matrix4 const& tf){
     setUniform(m_transformationProjectionMatrix, tf);
-    return *this;
-}
-
-TextureCoordinates& TextureCoordinates::bindColorMap(Magnum::GL::Texture2D& cm){
-    cm.bind(0);
-    return *this;
-}
-TextureCoordinates& TextureCoordinates::setNumPrimitives(float n){
-    setUniform(m_numPrimitives, n);
     return *this;
 }
 

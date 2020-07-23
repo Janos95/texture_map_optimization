@@ -9,7 +9,7 @@
 
 namespace Mg = Magnum;
 
-namespace Shaders{
+namespace shaders{
 
 class TextureCoordinates : public Mg::GL::AbstractShaderProgram {
 public:
@@ -22,9 +22,6 @@ public:
     explicit TextureCoordinates(Mg::NoCreateT) : Mg::GL::AbstractShaderProgram{Mg::NoCreate} {};
 
     TextureCoordinates& setTransformationProjectionMatrix(Mg::Matrix4 const&);
-    TextureCoordinates& bindColorMap(Magnum::GL::Texture2D&);
-    TextureCoordinates& setNumPrimitives(float);
-
 
 private:
 

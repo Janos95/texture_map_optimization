@@ -16,7 +16,7 @@
 
 using namespace Magnum;
 
-namespace Shaders{
+namespace shaders{
 
 Combine::Combine() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL460);

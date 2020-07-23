@@ -5,7 +5,7 @@
 #ifndef TEXTUREOPTIMIZATION_REDUCTION_H
 #define TEXTUREOPTIMIZATION_REDUCTION_H
 
-#include <scoped_timer/scoped_timer.hpp>
+#include <ScopedTimer/ScopedTimer.h>
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
@@ -31,11 +31,14 @@ public:
 
     explicit Reduction(Magnum::NoCreateT) : Magnum::GL::AbstractShaderProgram{Magnum::NoCreate} {};
 
-    Reduction& bindInput(Magnum::GL::Texture2D&, int level);
-    Reduction& bindMipMapTexture(Magnum::GL::Texture2D&, int level);
-private:
-    Magnum::UnsignedInt m_inputUnit = 0;
-    Magnum::UnsignedInt m_outputUnit = 1;
+    Reduction& bindRotationInImage(Magnum::GL::Texture2D&, int level);
+    Reduction& bindTranslationInImage(Magnum::GL::Texture2D&, int level);
+    Reduction& bindCostInImage(Magnum::GL::Texture2D&, int level);
+
+    Reduction& bindRotationOutImage(Magnum::GL::Texture2D&, int level);
+    Reduction& bindTranslationOutImage(Magnum::GL::Texture2D&, int level);
+    Reduction& bindCostOutImage(Magnum::GL::Texture2D&, int level);
+
 };
 
 }
@@ -108,68 +111,6 @@ float reduce(Mg::GL::Texture2D& input) {
 }
 
 
-using Vector6 = Mg::Math::Vector<6, float>;
 
-Vector6 sumGradient(Mg::GL::Texture2D& rotations, Mg::GL::Texture2D& translations) {
-    static Mg::GL::Texture2D mipMapRotations;
-    static Mg::GL::Texture2D mipMapTranslations;
-
-    Mg::Vector2i size = rotations.imageSize(0);
-    int level = 0;
-
-    if(rotations.imageSize(0) != size){
-        rotations = Mg::GL::Texture2D{};
-        translations = Mg::GL::Texture2D{};
-        rotations.setMagnificationFilter(Mg::GL::SamplerFilter::Linear)
-                     .setMinificationFilter(Mg::GL::SamplerFilter::Linear, Mg::GL::SamplerMipmap::Linear)
-                     .setWrapping(Mg::GL::SamplerWrapping::ClampToEdge)
-                     .setStorage(Mg::Math::log2(size.max()) + 1, Mg::GL::TextureFormat::R32F, input.imageSize(0))
-                     .generateMipmap();
-        rotations.setMagnificationFilter(Mg::GL::SamplerFilter::Linear)
-                 .setMinificationFilter(Mg::GL::SamplerFilter::Linear, Mg::GL::SamplerMipmap::Linear)
-                 .setWrapping(Mg::GL::SamplerWrapping::ClampToEdge)
-                 .setStorage(Mg::Math::log2(size.max()) + 1, Mg::GL::TextureFormat::R32F, input.imageSize(0))
-                 .generateMipmap();
-    }
-
-    float sumCheck = 0;
-    {
-        ScopedTimer timer{"CPU Reduction", true};
-        Cr::Containers::Array<char> dataCheck(size.product() * sizeof(float));
-        Mg::MutableImageView2D viewCheck{Mg::GL::PixelFormat::Red, Mg::GL::PixelType::Float, size, dataCheck};
-        input.image(level, viewCheck);
-        for(float x : Cr::Containers::arrayCast<float>(dataCheck))
-            sumCheck += x;
-    }
-
-    constexpr Mg::UnsignedInt stepSize = 4;
-    constexpr Mg::UnsignedInt downloadThreshold = 10'000;
-    static shaders::Reduction reductionShader{stepSize};
-
-    float sum = 0;
-    {
-        ScopedTimer timer{"Compute Shader Reduction", true};
-        while(size.product() > downloadThreshold){
-            Mg::Vector2ui wg{mipMapTexture.imageSize(level + stepSize)};
-            reductionShader.bindInput(level == 0 ? input : mipMapTexture, level)
-                           .bindMipMapTexture(mipMapTexture, level + stepSize)
-                           .dispatchCompute({wg.x(), wg.y(), 1});
-            size = mipMapTexture.imageSize(level + stepSize);
-            level += stepSize;
-            Mg::GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
-        }
-
-        Cr::Containers::Array<char> data(size.product() * sizeof(float));
-        Mg::MutableImageView2D view{Mg::GL::PixelFormat::Red, Mg::GL::PixelType::Float, size, data};
-        mipMapTexture.image(level, view);
-
-        for(float x : Cr::Containers::arrayCast<float>(data))
-            sum += x;
-    }
-
-    CORRADE_ASSERT(Mg::Math::abs(sum - sumCheck) < 1e-7, "Sums are not equal", 0);
-
-    return sum;
-}
 
 #endif //TEXTUREOPTIMIZATION_REDUCTION_H

@@ -8,7 +8,7 @@
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
 
-namespace Shaders {
+namespace shaders {
 
 class Combine : public Magnum::GL::AbstractShaderProgram {
 public:

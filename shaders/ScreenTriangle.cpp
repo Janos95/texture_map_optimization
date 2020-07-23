@@ -15,7 +15,7 @@
 using namespace Magnum;
 using namespace Corrade;
 
-namespace Shaders {
+namespace shaders {
 
 ScreenTriangle::ScreenTriangle() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL450);

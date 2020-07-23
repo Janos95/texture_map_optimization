@@ -6,12 +6,11 @@
 
 
 #include "arc_ball_camera.hpp"
-#include "TextureCoordinates.h"
 #include "types.h"
 #include "drawables.h"
-#include "Remap.h"
-#include "Combine.h"
-#include "keyfra
+#include "KeyFrame.h"
+#include "Optimization.h"
+#include "ScreenTriangle.h"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StaticArray.h>
@@ -32,14 +31,9 @@
 #include <Magnum/Shaders/Phong.h>
 #include <Magnum/Shaders/VertexColor.h>
 
-struct KeyFrame {
-    GL::Texture2D image, derivativeX, derivativeY;
-    Matrix4 pose;
-};
+struct Viewer: public Platform::Application {
 
-
-struct Viewer: public Platform::Application{
-    explicit Viewer(int argc, char** argv);
+    explicit Viewer(Arguments const&);
 
     void drawEvent() override;
     void viewportEvent(ViewportEvent& event) override;
@@ -52,7 +46,6 @@ struct Viewer: public Platform::Application{
     void textInputEvent(TextInputEvent& event) override;
 
     void drawOptions();
-    void averageColors();
 
     Cr::Containers::Optional<ArcBallCamera> camera;
     DrawableGroup drawables;
@@ -67,12 +60,10 @@ struct Viewer: public Platform::Application{
     Matrix4 projection;
     FlatDrawable* drawable = nullptr;
 
+    shaders::ScreenTriangle triangleShader;
     Mg::Shaders::Flat3D shader{Mg::NoCreate};
     Mg::Shaders::Phong phong{Mg::NoCreate};
     Mg::Shaders::VertexColor3D vertexColored{Mg::NoCreate};
-    ::Shaders::TextureCoordinates texCoordsShader{Mg::NoCreate};
-    ::Shaders::Remap remap{Mg::NoCreate};
-    ::Shaders::Combine combine{Mg::NoCreate};
 
     bool trackingMouse = false;
 
@@ -83,4 +74,7 @@ struct Viewer: public Platform::Application{
     Vector2i textureSize{1024, 1024};
     Vector2i imageSize{640, 480};
     GL::Mesh cs{Mg::NoCreate};
+
+    Containers::Optional<TextureMapOptimization> m_tmo;
+    bool m_isOptimizing = false;
 };

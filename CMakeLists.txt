@@ -13,11 +13,12 @@ find_package(MagnumIntegration CONFIG REQUIRED ImGui)
 
 find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
-add_subdirectory(scoped_timer)
+add_subdirectory(ScopedTimer)
 add_subdirectory(io)
 add_subdirectory(shaders)
 add_subdirectory(viewer)
 add_subdirectory(optimization)
+add_subdirectory(utilities)
 
 
 add_executable(tmo main.cpp)

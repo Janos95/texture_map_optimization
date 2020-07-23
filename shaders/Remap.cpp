@@ -16,7 +16,7 @@
 
 using namespace Magnum;
 
-namespace Shaders{
+namespace shaders{
 
 Remap::Remap() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL460);

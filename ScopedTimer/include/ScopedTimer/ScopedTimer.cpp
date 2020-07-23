@@ -2,7 +2,7 @@
 // Created by janos on 19.10.19.
 //
 
-#include "scoped_timer.hpp"
+#include "ScopedTimer.h"
 
 #include <Corrade/Containers/Pointer.h>
 #include <mutex>

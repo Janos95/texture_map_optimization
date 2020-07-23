@@ -17,5 +17,6 @@ void main()
             sum += imageLoad(inputImage, coordInput + ivec2(i,j)).r;
         }
     }
+
     imageStore(outputImage, coordOutput, vec4(sum, 0, 0, 0));
 }

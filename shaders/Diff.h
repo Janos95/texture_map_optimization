@@ -21,24 +21,30 @@ public:
 
     Diff();
 
-    Diff &setRvec(const Mg::Vector3 &);
-
-    Diff &setTvec(const Mg::Vector3 &);
-
-    Diff & setProjectionMatrix(float fx, float fy, float cx, float cy, float width, float height) {
+    Diff& setRotation(const Mg::Vector3& rot){
+        setUniform(m_rotationUniform, rot);
         return *this;
     }
 
-    Diff &bindImageGradientX(Mg::GL::Texture2D &imageGradientX) { return *this; }
+    Diff& setTranslation(Mg::Vector3 const& translation){
+        setUniform(m_translationUniform, translation);
+        return *this;
+    }
 
-    Diff &bindImageGradientY(Mg::GL::Texture2D &imageGradientY) { return *this; }
+    Diff& setProjectionMatrix(Mg::Matrix4 const& projection) {
+        setUniform(m_projectionUniform, projection);
+        return *this;
+    }
 
-    Diff &setTextureSize(Mg::VectorTypeFor<2, Mg::Int> const& size);
-
+    Diff& bindTexture(Mg::GL::Texture2D& texture) {
+        texture.bind(0);
+        return *this;
+    }
 
 private:
-    Mg::Int m_rvecUniform;
-    Mg::Int m_tvecUniform;
+    Mg::Int m_rotationUniform;
+    Mg::Int m_translationUniform;
+    Mg::Int m_projectionUniform;
     Mg::Int m_textureSizeUniform;
 };
 

@@ -16,9 +16,10 @@ in highp vec4 position;
 layout(location = 1)
 in mediump vec2 textureCoordinates;
 
-out vec2 textureCoordinates;
+out vec2 interpolatedTextureCoordinates;
 
 out mat3x2 IwrtRot;
+
 out mat3x2 IwrtTrans;
 
 void rotatePoint(in vec3 v, out vec3 result, out mat3 jacRot, out mat3 jacTrans){
@@ -57,5 +58,5 @@ void main() {
     IwrtTrans = jacProj * jacTrans;
 
     gl_Position = projectionMatrix * vec4(p, 1);
-    textureCoordinates = textureCoordinates;
+    interpolatedTextureCoordinates = textureCoordinates;
 }

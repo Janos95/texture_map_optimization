@@ -4,12 +4,10 @@
 
 #include "viewer.h"
 #include "io.h"
-#include "Remap.h"
-#include "ScreenTriangle.h"
-#include "Sobel.h"
 #include "Reduction.h"
+#include "UniqueFunction.hpp"
 
-#include <scoped_timer/scoped_timer.hpp>
+#include <ScopedTimer/ScopedTimer.h>
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Containers/GrowableArray.h>
@@ -41,6 +39,7 @@
 #include <Magnum/ImageView.h>
 
 #include <random>
+#include <SDL_events.h>
 
 using namespace Corrade;
 using namespace Magnum;
@@ -75,8 +74,8 @@ void setupTexture(GL::Texture2D& texture, Vector2i const& size, GL::TextureForma
 }
 
 
-Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
-                                                              Mg::NoCreate} {
+Viewer::Viewer(Arguments const& args) : Platform::Application{args, Mg::NoCreate} {
+
     /* Setup window */
     {
         const Vector2 dpiScaling = this->dpiScaling({});
@@ -98,6 +97,7 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
         const Vector3 up = Vector3::yAxis();
         camera.emplace(scene, eye, center, up, 45._degf,
                        windowSize(), framebufferSize());
+        camera->setLagging(0.85f);
     }
 
     /* setup texture that will be optimized */
@@ -136,7 +136,6 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
         Debug{} << "expected size " << Vector2i{640, 480} << ", got "
                 << imageSize;
 
-        ::Shaders::Sobel sobel;
         Vector3ui wgCount(imageSize.x(), imageSize.y(), 1);
 
         Containers::arrayResize(keyFrames, images.size());
@@ -144,16 +143,9 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
             auto& kf = keyFrames[i];
 
             setupTexture(kf.image, imageSize, GL::TextureFormat::RGBA32F);
-            setupTexture(kf.derivativeX, imageSize, GL::TextureFormat::RGBA32F);
-            setupTexture(kf.derivativeY, imageSize, GL::TextureFormat::RGBA32F);
 
             keyFrames[i].image.setSubImage(0, {}, images[i]);
             keyFrames[i].pose = poses[i] * Matrix4::scaling({1,-1,1}) * Matrix4::reflection({0,0,1}); /*computer vision -> opengl */
-
-            sobel.bindImage(kf.image)
-                 .bindDerivativeX(kf.derivativeX)
-                 .bindDerivativeY(kf.derivativeY)
-                 .dispatchCompute(wgCount);
         }
 
         meshData = *loadMeshData(
@@ -166,10 +158,6 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
         drawable->texture = &texture;
         projection = computeProjectionMatrix(640.f, 480.f, 525.f, 525.f, 319.5f,239.5f);
 
-        texCoordsShader = ::Shaders::TextureCoordinates{};
-        remap = ::Shaders::Remap{};
-        combine = ::Shaders::Combine{};
-
         cs = MeshTools::compile(Primitives::axis3D());
         vertexColored = Magnum::Shaders::VertexColor3D{};
         for(auto const& kf : keyFrames){
@@ -177,6 +165,8 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
             obj->scale({.1,.1,.1}).transform(kf.pose);
             new VertexColorDrawable(*obj, cs, vertexColored, &drawables);
         }
+
+        m_tmo.emplace(keyFrames, mesh);
     }
 
     /* Setup ImGui, load a better font */
@@ -210,13 +200,15 @@ Viewer::Viewer(int argc, char** argv) : Platform::Application{{argc, argv},
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
-    /* Start the timer, loop at 60 Hz max */
-    setSwapInterval(1);
-    setMinimalLoopPeriod(16);
 }
 
 void Viewer::drawOptions() {
-    ImGui::Checkbox("Show Texture", &showTexture);
+    if(ImGui::Button("Run Optimization")){
+        m_isOptimizing = true;
+        m_tmo->setTexture(texture);
+        m_tmo->run([this]{ drawEvent(); });
+        m_isOptimizing = false;
+    }
 }
 
 void Viewer::viewportEvent(ViewportEvent& event) {
@@ -227,7 +219,6 @@ void Viewer::viewportEvent(ViewportEvent& event) {
     imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
                    event.windowSize(), event.framebufferSize());
 }
-
 
 void Viewer::keyPressEvent(KeyEvent& event) {
     if(imgui.handleKeyPressEvent(event)){
@@ -343,76 +334,6 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
     redraw(); /* camera has changed, redraw! */
 }
 
-void Viewer::averageColors() {
-    ScopedTimer t{"Averaging all colors", true};
-
-    Range2Di viewport{{}, imageSize};
-    GL::Framebuffer fb{viewport};
-    GL::Renderbuffer depthBuffer;
-
-    depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24,
-                           viewport.size());
-    fb.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth,
-                          depthBuffer);
-
-    GL::Texture2D texCoordsTexture;
-    setupTexture(texCoordsTexture, imageSize, GL::TextureFormat::RGBA32F);
-
-    fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, texCoordsTexture, 0)
-      .mapForDraw(GL::Framebuffer::ColorAttachment{0})
-      .bind();
-
-    CORRADE_INTERNAL_ASSERT(
-            fb.checkStatus(GL::FramebufferTarget::Draw) ==
-            GL::Framebuffer::Status::Complete);
-
-
-    Vector3ui wgCount1(imageSize.x(), imageSize.y(), 1);
-    Vector3ui wgCount2(textureSize.x(), textureSize.y(), 1);
-
-    const auto map = DebugTools::ColorMap::turbo();
-    const Vector2i mapSize{Int(map.size()), 1};
-
-    GL::Texture2D colorMapTexture;
-    colorMapTexture
-            .setMinificationFilter(SamplerFilter::Linear)
-            .setMagnificationFilter(SamplerFilter::Linear)
-            .setWrapping(SamplerWrapping::ClampToEdge) // or Repeat
-            .setStorage(1, GL::TextureFormat::RGB8, mapSize) // or SRGB8
-            .setSubImage(0, {}, ImageView2D{PixelFormat::RGB8Srgb, mapSize, map});
-
-    fb.clearColor(0, Color4{});
-
-    for(auto& kf : keyFrames){
-
-        fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
-        texCoordsShader.setTransformationProjectionMatrix(projection * kf.pose.inverted())
-                       .bindColorMap(colorMapTexture)
-                       .setNumPrimitives(meshData.indexCount() / 3)
-                       .draw(mesh);
-
-        remap.bindTextureR(texR)
-             .bindTextureG(texG)
-             .bindTextureB(texB)
-             .bindTextureA(texA)
-             .bindImage(kf.image)
-             .bindTextureCoordinates(texCoordsTexture)
-             .dispatchCompute(wgCount1);
-    }
-
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-    combine.bindTextureR(texR)
-           .bindTextureG(texG)
-           .bindTextureB(texB)
-           .bindTextureA(texA)
-           .bindRgbaImage(texture)
-           .dispatchCompute(wgCount2);
-
-    //GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-}
-
 void Viewer::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
@@ -435,18 +356,23 @@ void Viewer::drawEvent() {
     }
 
     {
-        if(false && !showTexture) {
-            camera->update();
-            //camera->draw(drawables);
-        } else {
-            auto& tex = showTexture ? keyFrames[0].derivativeY : keyFrames[0].derivativeX;
-            ::Shaders::ScreenTriangle triangleShader;
-            triangleShader.bindTexture(tex)
-                          .draw(GL::Mesh{}.setCount(3));
-        }
+        /* first render the mesh using the texture */
+        camera->update();
+        camera->draw(drawables);
+
+        /* render the texture into the upper right corner ontop */
+        auto vp = GL::defaultFramebuffer.viewport();
+        GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+        GL::defaultFramebuffer.setViewport({vp.max() * 3 / 4, vp.max()});
+        triangleShader.bindTexture(texture)
+                      .draw(GL::Mesh{}.setCount(3));
+        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+        GL::defaultFramebuffer.setViewport(vp);
     }
 
-    drawOptions();
+    if(!m_isOptimizing)
+        drawOptions();
+
     imgui.updateApplicationCursor(*this);
 
     /* Render ImGui window */
@@ -465,5 +391,7 @@ void Viewer::drawEvent() {
     }
 
     swapBuffers();
-    redraw();
+
+    if(!m_isOptimizing)
+        redraw();
 }

@@ -2,11 +2,13 @@
 // Created by janos on 7/4/20.
 //
 
+#pragma once
+
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/GL/GL.h>
 
-namespace Shaders {
+namespace shaders {
 
 class ScreenTriangle : public Magnum::GL::AbstractShaderProgram {
 public:
