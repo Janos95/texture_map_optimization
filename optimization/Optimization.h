@@ -6,8 +6,8 @@
 #pragma once
 
 #include "KeyFrame.h"
-
-#include "UniqueFunction.h"
+#include "RenderPass.h"
+#include "Utilities.h"
 
 #include <Corrade/Containers/Containers.h>
 
@@ -17,26 +17,25 @@
 namespace Mg = Magnum;
 namespace Cr = Corrade;
 
-class Viewer;
+namespace TextureMapOptimization {
 
-class TextureMapOptimization
-{
+class Optimization {
 public:
-    TextureMapOptimization(Cr::Containers::Array<KeyFrame>&, Mg::GL::Mesh&);
 
-    void setTexture(Mg::GL::Texture2D& texture) { m_texture = &texture; }
-    void run(UniqueFunction<void()>&&);
+    Optimization(Cr::Containers::Array<KeyFrame>&, Mg::Trade::MeshData&);
+
+    void setTexture(Mg::GL::Texture2D& texture) { m_renderPass.setTexture(texture); }
+    void mapTexture() { m_renderPass.averagingPass(); }
+
+    ceres::TerminationType run(UniqueFunction<bool()>);
 
 private:
 
-    void averageColors();
-
-
-
-
-    Mg::GL::Mesh& m_mesh;
     Cr::Containers::Array<KeyFrame>& m_kfs;
+    RenderPass m_renderPass;
 
-    Mg::GL::Texture2D* m_texture = nullptr;
+    //Mg::GL::Texture2D* m_texture = nullptr;
 };
+
+}
 

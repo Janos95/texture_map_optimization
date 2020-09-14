@@ -1,6 +1,7 @@
 
 
-#include "viewer.h"
+#include "Viewer.h"
+#include "UniqueFunction.hpp"
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -45,4 +46,17 @@ void rodriguezRot(Vector3d const& rod, Vector3d const& v, Vector3d& result, Matr
            {x * z * subexpr1 + y * subexpr2,    -x * subexpr2 + y * z * subexpr1,   z2 * subexpr1 + cosTheta}};
 }
 
-MAGNUM_APPLICATION_MAIN(Viewer)
+
+int main(int argc, char** argv){
+    TextureMapOptimization::Viewer viewer{{argc, argv}};
+
+    while(viewer.mainLoopIteration()){
+        if(viewer.isOptimizing){
+            auto terminType = viewer.runOptimization([&viewer]{ return viewer.mainLoopIteration(); });
+            if(terminType == ceres::TerminationType::USER_FAILURE)
+                break;
+            viewer.isOptimizing = false;
+        }
+    }
+}
+

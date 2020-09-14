@@ -1,0 +1,55 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(r32f, binding = 0)
+uniform readonly image2D cost;
+
+layout(rgb32f, binding = 1)
+uniform readonly image2D gradientRotation;
+
+layout(rgb32f, binding = 2)
+uniform readonly image2D gradientTranslation;
+
+layout(r32f, binding = 3)
+uniform writeonly image2D costAccumulated;
+
+layout(rgb32f, binding = 4)
+uniform writeonly image2D gradientRotationAccumulated;
+
+layout(rgb32f, binding = 5)
+uniform writeonly image2D gradientTranslationAccumulated;
+
+layout(rgb32f, binding = 6)
+uniform readonly image2D depth;
+
+layout(location = 0)
+uniform float discontinuityThreshold = 0.005; /* 5mm defaul threshold */
+
+void main()
+{
+    ivec2 coordOutput = gl_GlobalInvocationID;
+    ivec2 coordInput = BLOCK_SIZE * coordOutput;
+
+    vec2 sumCost = vec2(0);
+    vec4 sumRotation = vec4(0);
+    vec4 sumTranslation = vec4(0);
+
+    float maximumDepth = -1000;
+    float minimumDepth = 1000;
+    for(int i = 0; i < BLOCK_SIZE; ++i){
+        for(int j = 0; j < BLOCK_SIZE; ++j){
+            ivec2 offset = ivec2(i,j);
+            sumCost += imageLoad(costInput, coordInput + offset).xy;
+            sumRotation += imageLoad(rotationInput, coordInput + offset);
+            sumTranslation += imageLoad(translationInput, coordInput + offset);
+            float d = imageLoad(depth, coordInput + offset).x;
+            maximumDepth = max(maximumDepth, d);
+            minimumDepth = min(minimumDepth, d);
+        }
+    }
+
+    float isValid = float(maximumDepth - minimumDepth < discontinuityThreshold);
+
+    imageStore(gradientRotationAccumulated, coords, isValid*gradRotSum);
+    imageStore(gradientTranslationAccumulated, coords, isValid*gradTransSum);
+    imageStore(costAccumulated, coords, isValid*vec4(costSum, 0, 0));
+}

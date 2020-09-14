@@ -1,0 +1,41 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(rg32f, binding = 0)
+uniform readonly image2DArray costInput;
+
+layout(rgba32f, binding = 0)
+uniform readonly image2DArray rotationInput;
+
+layout(rgba32f, binding = 0)
+uniform readonly image2DArray translationInput;
+
+layout(rg32f, binding = 1)
+uniform writeonly image2DArray costOutput;
+
+layout(rgba32f, binding = 1)
+uniform writeonly image2DArray rotationOutput;
+
+layout(rgba32f, binding = 1)
+uniform writeonly image2DArray translationOutput;
+
+void main()
+{
+    ivec3 coordOutput = gl_GlobalInvocationID;
+    ivec3 coordInput = ivec3(BLOCK_SIZE * coordOutput, coordOutput.z);
+
+    vec2 sumCost = vec2(0);
+    vec4 sumRotation = vec4(0);
+    vec4 sumTranslation = vec4(0);
+    for(int i = 0; i < BLOCK_SIZE; ++i){
+        for(int j = 0; j < BLOCK_SIZE; ++j){
+            ivec3 offset = ivec3(i,j,0);
+            sumCost += imageLoad(costInput, coordInput + offset).xy;
+            sumRotation += imageLoad(rotationInput, coordInput + offset);
+            sumTranslation += imageLoad(translationInput, coordInput + offset);
+        }
+    }
+
+    imageStore(costOutput, coordOutput, vec4(sumCost, 0, 0));
+    imageStore(rotationOutput, coordOutput, sumRotation);
+    imageStore(translationOutput, coordOutput, sumTranslation);
+}

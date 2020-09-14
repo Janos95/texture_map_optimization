@@ -1,6 +1,5 @@
 add_library(optimization
         Cost.h
-        Cost.cpp
         Optimization.h
         Optimization.cpp
         KeyFrame.h

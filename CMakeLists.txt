@@ -15,10 +15,10 @@ find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
 
 add_subdirectory(ScopedTimer)
 add_subdirectory(io)
-add_subdirectory(shaders)
+add_subdirectory(Shaders)
 add_subdirectory(viewer)
 add_subdirectory(optimization)
-add_subdirectory(utilities)
+add_subdirectory(Utilities)
 
 
 add_executable(tmo main.cpp)
