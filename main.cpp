@@ -1,7 +1,6 @@
 
 
 #include "Viewer.h"
-#include "UniqueFunction.hpp"
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -52,8 +51,8 @@ int main(int argc, char** argv){
 
     while(viewer.mainLoopIteration()){
         if(viewer.isOptimizing){
-            auto terminType = viewer.runOptimization([&viewer]{ return viewer.mainLoopIteration(); });
-            if(terminType == ceres::TerminationType::USER_FAILURE)
+            bool ret = viewer.startOptimization();
+            if(ret)
                 break;
             viewer.isOptimizing = false;
         }

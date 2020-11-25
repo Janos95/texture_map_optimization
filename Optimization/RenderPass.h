@@ -6,7 +6,7 @@
 
 #include "KeyFrame.h"
 #include "Diff.h"
-#include "DepthFilter.h"
+//#include "DepthFilter.h"
 #include "Reduction.h"
 #include "TextureCoordinates.h"
 #include "Remap.h"
@@ -44,13 +44,29 @@ public:
 
     CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
 
-    RenderPass(Mg::Trade::MeshData const&, Cr::Containers::Array<KeyFrame>&);
+    RenderPass(GL::Mesh&, Cr::Containers::Array<KeyFrame>&);
 
     void setTexture(GL::Texture2D& texture);
 
     void optimizationPass(double const* const* params, double* costs, double** jacobians);
 
     void averagingPass();
+
+    void setFramebufferMode(FramebufferMode);
+
+    void renderKeyPose(GL::Texture2D& image, size_t idx);
+
+    void renderGradient(GL::Texture2D& image, size_t idx);
+
+    void setCameraParameters(float nx, float ny, float fx, float fy, float cx, float cy) {
+        auto fov = Math::atan(nx/(2*fx));
+        m_projection = Matrix4::perspectiveProjection(2*fov, nx/ny, 0.01, 10);
+
+        m_fx = fx;
+        m_fy = fy;
+        m_cx = cx;
+        m_cy = cy;
+    }
 
     void clearImages() {
 
@@ -73,38 +89,34 @@ public:
 
 private:
 
-    Cr::Containers::Array<KeyFrame>& m_keyFrames;
+    GL::Mesh& m_mesh;
+    Array<KeyFrame>& m_keyFrames;
+
     GL::Texture2D* m_texture = nullptr;
 
     Matrix4 m_projection;
+    float m_fx, m_fy, m_cx, m_cy;
 
     GL::Framebuffer m_fb{Mg::NoCreate};
 
     UnsignedInt m_depthFilterReductionFactor = 3;
 
-    GL::Mesh m_mesh;
-    GL::Buffer m_instancedTransformations;
 
-    //Shaders::Diff m_diff;
-    //Shaders::DepthFilter m_depthFilter{m_depthFilterReductionFactor};
-    //Shaders::Reduction m_reduction{3};
-
+    Shaders::Diff m_diff;
     Shaders::TextureCoordinates m_texCoordsShader;
     Shaders::Remap m_remap;
     Shaders::Combine m_combine;
 
-    GL::Texture2DArray m_gradientRotations, m_gradientTranslations, m_costs, m_depth;
+    GL::Texture2D m_gradientRotations, m_gradientTranslations, m_costs;
 
     GL::Texture2D m_red, m_green, m_blue;
     GL::Texture2D m_count;
-    GL::Texture2D m_texCoords;
-    GL::Texture1D m_rotationParameters, m_translationParameters;
 
-    GL::Texture2D m_depthSingle;
+    GL::Texture2D m_depth;
     GL::Texture2D m_texCoordsTexture;
 
-    Mg::Vector2i m_imageSize;
-    Mg::Vector2i m_textureSize;
+    Vector2i m_imageSize;
+    Vector2i m_textureSize;
 
     FramebufferMode m_fbMode = {};
 

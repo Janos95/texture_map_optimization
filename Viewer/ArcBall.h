@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Types.h"
+
 #include <Magnum/Math/Quaternion.h>
 #include <Magnum/Math/DualQuaternion.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Magnum.h>
-
-using namespace Magnum;
 
 /* Implementation of Ken Shoemake's arcball camera with smooth navigation
    feature: https://www.talisman.org/~erlkonig/misc/shoemake92-arcball.pdf */

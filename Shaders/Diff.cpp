@@ -33,9 +33,13 @@ Diff::Diff() {
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
-    m_rotationUniform = uniformLocation("rvec");
-    m_translationUniform = uniformLocation("tvec");
-    m_textureSizeUniform = uniformLocation("textureSize");
+    m_rotationUniform = uniformLocation("rotation");
+    m_translationUniform = uniformLocation("translation");
+    m_projTfUniform = uniformLocation("projectionTransformationMatrix");
+    m_fxUniform = uniformLocation("fx");
+    m_fyUniform = uniformLocation("fy");
+    m_cxUniform = uniformLocation("cx");
+    m_cyUniform = uniformLocation("cy");
 }
 
 Diff& Diff::setRotation(Vector3 const& rotation) {
@@ -45,6 +49,14 @@ Diff& Diff::setRotation(Vector3 const& rotation) {
 
 Diff& Diff::setTranslation(Vector3 const& translation) {
     setUniform(m_translationUniform, translation);
+    return *this;
+}
+
+Diff& Diff::setCameraParameters(float fx, float fy, float cx, float cy) {
+    setUniform(m_fxUniform, fx);
+    setUniform(m_fyUniform, fy);
+    setUniform(m_cxUniform, cx);
+    setUniform(m_cyUniform, cy);
     return *this;
 }
 

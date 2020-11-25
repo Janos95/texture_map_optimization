@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "Types.h"
+
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Magnum.h>
@@ -11,15 +13,11 @@
 
 namespace TextureMapOptimization {
 
-namespace Mg = Magnum;
-namespace Cr = Corrade;
-
 struct KeyFrame {
-    Mg::GL::Texture2D image;
-    Mg::Matrix4 projection;
+    GL::Texture2D image;
 
-    Mg::Matrix4 pose;
-    Cr::Containers::StaticArray<6, double> pose6D;
+    Matrix4 pose;
+    StaticArray<6, double> pose6D;
 
     void compressPose();
 

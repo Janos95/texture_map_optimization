@@ -5,13 +5,15 @@
 #pragma once
 
 #include "ArcBall.h"
-#include "types.h"
 #include "KeyFrame.h"
-#include "Optimization.h"
 #include "FullScreenTriangle.h"
+#include "Types.h"
+#include "Utilities.h"
+#include "RenderPass.h"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StaticArray.h>
+#include <Corrade/Containers/Array.h>
 
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/CubeMapTexture.h>
@@ -22,13 +24,15 @@
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.h>
-#include <Corrade/Containers/Array.h>
 #include <Magnum/Shaders/Phong.h>
 #include <Magnum/Shaders/VertexColor.h>
 
 namespace TextureMapOptimization {
 
-struct Viewer : public Platform::Application {
+namespace Mg = Magnum;
+namespace Cr = Corrade;
+
+struct Viewer : public Mg::Platform::Application {
 
     explicit Viewer(Arguments const&);
 
@@ -52,17 +56,27 @@ struct Viewer : public Platform::Application {
 
     void drawOptions();
 
-    ceres::TerminationType runOptimization(UniqueFunction<bool()> cb);
+    /*
+     * this member function should not be called
+     * from withing this class. Rather it is used
+     * to start the optimization from the thread driving
+     * the application. The optimization framework used (ceres)
+     * does not allow to do a single interation, thus
+     * we give it a callback which runs the main loop
+     * iteration after each optimization pass to not block
+     * the GUI.
+     */
+    bool startOptimization();
 
     bool isOptimizing = false;
 
-    Cr::Containers::Optional<ArcBall> arcball;
+    Optional<ArcBall> arcball;
 
-    Mg::GL::Texture2D texture{Mg::NoCreate};
+    GL::Texture2D texture{Mg::NoCreate};
 
-    Mg::GL::Mesh mesh{Mg::NoCreate};
+    GL::Mesh mesh{Mg::NoCreate};
     Mg::Trade::MeshData meshData{Mg::MeshPrimitive::Points, 0};
-    Containers::Array<KeyFrame> keyFrames;
+    Array<KeyFrame> keyFrames;
     Matrix4 projection;
 
     Shaders::FullScreenTriangle triangleShader{Mg::NoCreate};
@@ -75,12 +89,18 @@ struct Viewer : public Platform::Application {
     Mg::ImGuiIntegration::Context imgui{Mg::NoCreate};
 
     bool showTexture = true;
+    bool drawPoses = false;
 
     Vector2i textureSize{1024, 1024};
-    Vector2i imageSize{640, 480};
-    GL::Mesh cs{Mg::NoCreate};
+    Vector2i imageSize;
 
-    Containers::Optional<Optimization> m_tmo;
+    GL::Mesh axis{Mg::NoCreate};
+    int currentKf = 0;
+    int currentOption = 0;
+
+    GL::Texture2D renderedImage{Mg::NoCreate};
+
+    Optional<RenderPass> renderPass;
 };
 
 }

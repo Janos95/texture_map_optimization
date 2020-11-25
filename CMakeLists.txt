@@ -1,31 +1,28 @@
 cmake_minimum_required(VERSION 3.13)
 project(TextureOptimization LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/modules)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Corrade CONFIG REQUIRED PluginManager Containers TestSuite Utility)
-find_package(Magnum CONFIG REQUIRED GL SceneGraph MeshTools Sdl2Application Shaders Primitives DebugTools)
-find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
-find_package(MagnumIntegration CONFIG REQUIRED ImGui)
-
-find_package(MagnumPlugins CONFIG REQUIRED AssimpImporter)
+find_package(Corrade REQUIRED PluginManager Containers TestSuite Utility)
+find_package(Magnum REQUIRED GL MeshTools Sdl2Application Shaders Primitives DebugTools)
+find_package(MagnumPlugins REQUIRED AssimpImporter)
+find_package(MagnumIntegration REQUIRED ImGui)
+find_package(Ceres)
+find_package(MagnumPlugins REQUIRED AssimpImporter)
 
 add_subdirectory(ScopedTimer)
-add_subdirectory(io)
 add_subdirectory(Shaders)
-add_subdirectory(viewer)
-add_subdirectory(optimization)
+add_subdirectory(Viewer)
+add_subdirectory(Optimization)
 add_subdirectory(Utilities)
 
+add_executable(App main.cpp)
 
-add_executable(tmo main.cpp)
-
-target_link_libraries(tmo PUBLIC
+target_link_libraries(App PUBLIC
         Magnum::Magnum
-        tmo::io
-        tmo::viewer
-        tmo::optimization)
+        Tmo::Viewer
+        Tmo::Optimization)
 

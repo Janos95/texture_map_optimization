@@ -4,8 +4,8 @@
 
 #include "Optimization.h"
 #include "Cost.h"
-#include "UniqueFunction.hpp"
 #include "ScopedTimer/ScopedTimer.h"
+#include "UniqueFunction.h"
 
 #include <Magnum/Math/Color.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -13,9 +13,8 @@
 #include <Magnum/PixelFormat.h>
 
 #include <ceres/loss_function.h>
-
-using namespace Magnum;
-using namespace Corrade;
+#include <ceres/problem.h>
+#include <ceres/solver.h>
 
 namespace TextureMapOptimization {
 
@@ -30,31 +29,31 @@ struct Callback : public ceres::IterationCallback {
     UniqueFunction<ceres::CallbackReturnType()> cb;
 };
 
-Optimization::Optimization(Cr::Containers::Array<KeyFrame>& kfs, Mg::Trade::MeshData& meshData) :
-    m_kfs(kfs), m_renderPass(meshData, kfs)
-{
-}
-
-ceres::TerminationType Optimization::run(UniqueFunction<bool()> vis) {
+bool runOptimization(
+            Array<KeyFrame>& kfs,
+            GL::Texture2D& texture,
+            RenderPass& renderPass,
+            UniqueFunction<bool()>&& cb) {
 
     //m_renderPass.setTexture(*m_texture);
 
-    Callback callback{[this, &vis]{
-        m_renderPass.averagingPass();
-        if(vis()){
+    Callback callback{[&]{
+        renderPass.averagingPass();
+        if(cb()){
             return ceres::CallbackReturnType::SOLVER_CONTINUE;
         } else {
             return ceres::CallbackReturnType::SOLVER_ABORT;
         }
     }};
-    std::vector<double*> parameterBlocks(m_kfs.size());
-    for(std::size_t i = 0; i < m_kfs.size(); ++i) {
-        m_kfs[i].compressPose();
-        parameterBlocks[i] = m_kfs[i].pose6D.data();
+
+    std::vector<double*> parameterBlocks(kfs.size());
+    for(std::size_t i = 0; i < kfs.size(); ++i) {
+        kfs[i].compressPose();
+        parameterBlocks[i] = kfs[i].pose6D.data();
     }
 
     ceres::Problem problem;
-    problem.AddResidualBlock(new PhotometricCost{m_renderPass}, new ceres::TrivialLoss{}, parameterBlocks);
+    problem.AddResidualBlock(new PhotometricCost{renderPass}, new ceres::TrivialLoss{}, parameterBlocks);
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_SCHUR;
@@ -66,7 +65,7 @@ ceres::TerminationType Optimization::run(UniqueFunction<bool()> vis) {
 
     ceres::Solve(options, &problem, &summary);
 
-    return summary.termination_type;
+    return summary.termination_type != ceres::USER_FAILURE;
 }
 
 }

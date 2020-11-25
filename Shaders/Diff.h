@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "Types.h"
+
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/Math/Matrix4.h>
@@ -13,7 +15,7 @@ namespace Mg = Magnum;
 
 namespace TextureMapOptimization::Shaders {
 
-class Diff : public Mg::GL::AbstractShaderProgram {
+class Diff : public GL::AbstractShaderProgram {
 public:
 
     using Position = Mg::Shaders::Generic3D::Position;
@@ -24,23 +26,33 @@ public:
 
     Diff& setRotation(const Mg::Vector3& rot);
 
+    Diff& setCameraParameters(float, float, float, float);
+
     Diff& setTranslation(Mg::Vector3 const& translation);
 
-    Diff& setProjectionMatrix(Mg::Matrix4 const& projection) {
-        setUniform(m_projectionUniform, projection);
+    Diff& setProjectionTransformationMatrix(Mg::Matrix4 const& projTf) {
+        setUniform(m_projTfUniform, projTf);
         return *this;
     }
 
-    Diff& bindTexture(Mg::GL::Texture2D& texture) {
+    Diff& bindGroundTruthTexture(GL::Texture2D& texture) {
         texture.bind(0);
         return *this;
     }
 
+    Diff& bindOptimizationTexture(GL::Texture2D& texture) {
+        texture.bind(1);
+        return *this;
+    }
+
 private:
-    Mg::Int m_rotationUniform;
-    Mg::Int m_translationUniform;
-    Mg::Int m_projectionUniform;
-    Mg::Int m_textureSizeUniform;
+    Int m_rotationUniform,
+        m_translationUniform,
+        m_projTfUniform,
+        m_fxUniform,
+        m_fyUniform,
+        m_cxUniform,
+        m_cyUniform;
 };
 
 }

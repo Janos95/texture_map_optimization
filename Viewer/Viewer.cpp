@@ -3,54 +3,49 @@
 //
 
 #include "Viewer.h"
-#include "io.h"
+#include "IO.h"
 #include "Reduction.h"
-#include "UniqueFunction.hpp"
+#include "UniqueFunction.h"
+#include "Optimization.h"
 
 #include <ScopedTimer/ScopedTimer.h>
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/PluginManager/Manager.h>
+#include <Corrade/Containers/StringView.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/Math/Matrix4.h>
-#include <Magnum/GL/PixelFormat.h>
 #include <Magnum/Math/FunctionsBatch.h>
 #include <Magnum/Primitives/Capsule.h>
-#include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Axis.h>
 #include <Magnum/MeshTools/Compile.h>
-#include <Magnum/MeshTools/FlipNormals.h>
-#include <Magnum/MeshTools/Duplicate.h>
 #include <Magnum/GL/CubeMapTexture.h>
-#include <Magnum/GL/Framebuffer.h>
 #include <Magnum/DebugTools/ColorMap.h>
 #include <Magnum/Image.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/Math/Algorithms/Svd.h>
 
 #include <Magnum/ImGuiIntegration/Context.hpp>
-#include <Magnum/DebugTools/ColorMap.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/PixelFormat.h>
-#include <Magnum/ImageView.h>
 
-#include <random>
 #include <SDL_events.h>
 
 namespace TextureMapOptimization {
 
-using namespace Corrade;
-using namespace Magnum;
+template <typename T, size_t Size>
+char (*countof_helper(T (&_Array)[Size]))[Size];
+
+#define COUNTOF(array) (sizeof(*countof_helper(array)) + 0)
 
 using namespace Math::Literals;
-
-using namespace Corrade::Containers;
-
+using namespace Corrade::Containers::Literals;
 
 Matrix4
 computeProjectionMatrix(float nx, float ny, float fx, float fy, float cx, float cy) {
@@ -78,7 +73,7 @@ void setupTexture(GL::Texture2D& texture, Vector2i const& size, GL::TextureForma
 }
 
 
-Viewer::Viewer(Arguments const& args) : Platform::Application{args, Mg::NoCreate} {
+Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCreate} {
 
     /* Setup window */
     {
@@ -110,30 +105,45 @@ Viewer::Viewer(Arguments const& args) : Platform::Application{args, Mg::NoCreate
     {
         flat = Magnum::Shaders::Flat3D{Magnum::Shaders::Flat3D::Flag::Textured};
         phong = Magnum::Shaders::Phong{Magnum::Shaders::Phong::Flag::DiffuseTexture};
+        vertexColored = Magnum::Shaders::VertexColor3D{};
         triangleShader = Shaders::FullScreenTriangle{};
 
         Vector2i size = Vector2i{512, 512};
         setupTexture(texture, size, GL::TextureFormat::RGBA32F);
 
-        Containers::Array<char> data{NoInit, size.product()*sizeof(Color4)};
-        for(Color4& c : Containers::arrayCast<Color4>(data)) {
+        Array<char> data{NoInit, size.product()*sizeof(Color4)};
+        for(Color4& c : arrayCast<Color4>(data)) {
             c = Color4::red();
         }
-        Image2D redImage{PixelFormat::RGBA32F, size, std::move(data)};
+        Mg::Image2D redImage{Mg::PixelFormat::RGBA32F, size, std::move(data)};
         texture.setSubImage(0, {}, redImage);
     }
 
     /* setup scene*/
     {
-        auto images = loadImages(
-                "/home/janos/texture_map_optimization/assets/fountain_small/image");
-        auto poses = loadPoses(
-                "/home/janos/texture_map_optimization/assets/fountain_small/scene/key.log");
-        Debug{} << "expected size " << Vector2i{640, 480} << ", got "
-                << imageSize;
+        auto images = loadImages("/home/janos/TextureMapOptimization/assets/fountain_small/image"_s);
+        auto poses = loadPoses("/home/janos/TextureMapOptimization/assets/fountain_small/scene/key.log"_s);
 
-        Containers::arrayResize(keyFrames, images.size());
+        /* if matrix is not rigid, project rotation part onto SO3 */
+        for(auto& pose : poses) {
+            if(!pose.isRigidTransformation()) {
+                Matrix3 rot{{pose[0].xyz(),
+                             pose[1].xyz(),
+                             pose[2].xyz()}};
+                auto [U, _, V] = Math::Algorithms::svd(rot);
+                pose = Matrix4::from(U*V.transposed(), pose.translation());
+                CORRADE_ASSERT(pose.isRigidTransformation(), "Couldn't solvage not rigid pose",);
+            }
+        }
+
+        imageSize = images.front().size();
+        Debug{} << "Image size of imported images" << imageSize;
+        setupTexture(renderedImage, imageSize, GL::TextureFormat::RGBA32F);
+
+        arrayResize(keyFrames, images.size());
         for(std::size_t i = 0; i < images.size(); ++i) {
+            //if(i % 10 != 0) continue;
+
             auto& kf = keyFrames[i];
 
             setupTexture(kf.image, imageSize, GL::TextureFormat::RGBA32F);
@@ -141,19 +151,21 @@ Viewer::Viewer(Arguments const& args) : Platform::Application{args, Mg::NoCreate
             kf.image.setSubImage(0, {}, images[i]);
             /*computer vision -> opengl */
             kf.pose = poses[i]*Matrix4::scaling({1, -1, 1})*Matrix4::reflection({0, 0, 1});
-            kf.projection = projection;
             kf.compressPose();
         }
 
-        meshData = *loadMeshData("/home/janos/texture_map_optimization/assets/fountain_small/scene/fountain.ply");
+        meshData = *loadMeshData("/home/janos/TextureMapOptimization/assets/fountain_small/scene/blender.ply"_s);
 
-        Debug{} << meshData.hasAttribute(Trade::MeshAttribute::Normal);
-        Debug{} << meshData.hasAttribute(Trade::MeshAttribute::TextureCoordinates);
+        Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::Normal);
+        Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::TextureCoordinates);
         //MeshTools::flipFaceWindingInPlace(meshData.mutableIndices());
         //meshData = MeshTools::duplicate(md);
-        mesh = MeshTools::compile(meshData);
+        mesh = Mg::MeshTools::compile(meshData);
+        axis = Mg::MeshTools::compile(Mg::Primitives::axis3D());
 
-        m_tmo.emplace(keyFrames, meshData);
+        renderPass.emplace(mesh, keyFrames);
+        renderPass->setTexture(texture);
+        renderPass->setCameraParameters(640.f, 480.f, 525.f, 525.f, 319.5f, 239.5f);
     }
 
     /* Setup ImGui, load a better font */
@@ -164,14 +176,14 @@ Viewer::Viewer(Arguments const& args) : Platform::Application{args, Mg::NoCreate
         ImFontConfig fontConfig;
         fontConfig.FontDataOwnedByAtlas = false;
         const Vector2 size = Vector2{windowSize()}/dpiScaling();
-        Utility::Resource rs{"fonts"};
-        Containers::ArrayView<const char> font = rs.getRaw(
+        Cr::Utility::Resource rs{"fonts"};
+        ArrayView<const char> font = rs.getRaw(
                 "SourceSansPro-Regular.ttf");
         ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
                 const_cast<char*>(font.data()), Int(font.size()),
                 20.0f*framebufferSize().x()/size.x(), &fontConfig);
 
-        imgui = ImGuiIntegration::Context{*ImGui::GetCurrentContext(),
+        imgui = Mg::ImGuiIntegration::Context{*ImGui::GetCurrentContext(),
                                           Vector2{windowSize()}/dpiScaling(),
                                           windowSize(), framebufferSize()};
 
@@ -195,8 +207,40 @@ void Viewer::drawOptions() {
     }
     ImGui::SameLine();
     if(ImGui::Button("Map Texture")) {
-        m_tmo->setTexture(texture);
-        m_tmo->mapTexture();
+        renderPass->setTexture(texture);
+        renderPass->averagingPass();
+    }
+
+    ImGui::Checkbox("Draw Poses", &drawPoses);
+
+    if(ImGui::InputInt("Keyframe Idx", &currentKf)) {
+        currentKf = Math::clamp<int>(currentKf, 0, keyFrames.size() - 1);
+        if(currentOption == 2) {
+            renderPass->renderKeyPose(renderedImage, currentKf);
+            GL::DefaultFramebuffer().bind();
+        }
+    }
+
+    static const char* options[] = {"Texture", "Groundtruth Image", "Rendered Image"};
+    if(ImGui::BeginCombo("Color Map", options[currentOption])) {
+        for(size_t i = 0; i < COUNTOF(options); ++i) {
+            bool isSelected = i == currentOption;
+            if(ImGui::Selectable(options[i], isSelected)) {
+                currentOption = i;
+                if(i == 2) {
+                    renderPass->renderKeyPose(renderedImage, currentKf);
+                    GL::DefaultFramebuffer().bind();
+                }
+            }
+            if(isSelected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    if(ImGui::Button("Camera To Keyframe")) {
+        const auto& pose = keyFrames[currentKf].pose;
+        arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
     }
 }
 
@@ -258,8 +302,7 @@ void Viewer::mousePressEvent(MouseEvent& event) {
 
     if(event.button() == MouseEvent::Button::Middle) {
         trackingMouse = true;
-        ///* Enable mouse capture so the mouse can drag outside of the window */
-        ///** @todo replace once https://github.com/mosra/magnum/pull/419 is in */
+
         SDL_CaptureMouse(SDL_TRUE);
 
         arcball->initTransformation(event.position());
@@ -276,8 +319,7 @@ void Viewer::mouseReleaseEvent(MouseEvent& event) {
     }
 
     if(event.button() == MouseEvent::Button::Middle) {
-        /* Disable mouse capture again */
-        /** @todo replace once https://github.com/mosra/magnum/pull/419 is in */
+
         if(trackingMouse) {
             SDL_CaptureMouse(SDL_FALSE);
             trackingMouse = false;
@@ -319,7 +361,8 @@ void Viewer::mouseScrollEvent(MouseScrollEvent& event) {
 }
 
 void Viewer::drawEvent() {
-    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth)
+                          .bind();
 
     imgui.newFrame();
     /* Enable text input, if needed */
@@ -328,7 +371,15 @@ void Viewer::drawEvent() {
     else if(!ImGui::GetIO().WantTextInput && isTextInputActive())
         stopTextInput();
 
-    {
+
+    arcball->updateTransformation();
+    Matrix4 viewTf = arcball->viewMatrix();
+
+    if(drawPoses) {
+        for(auto const& kf : keyFrames) {
+            vertexColored.setTransformationProjectionMatrix(projection*viewTf*kf.pose*Matrix4::scaling({0.1,0.1,0.1}))
+                         .draw(axis);
+        }
         //GL::Texture2D testTexture;
         //testTexture.setMagnificationFilter(GL::SamplerFilter::Linear)
         //           .setMinificationFilter(GL::SamplerFilter::Linear)
@@ -338,30 +389,32 @@ void Viewer::drawEvent() {
         //auto sum = reduce(testTexture);
     }
 
-    {
-        /* first render the mesh using the texture */
-        arcball->updateTransformation();
+    /* first render the mesh using the texture */
+    phong
+         .bindDiffuseTexture(texture)
+         .setTransformationMatrix(viewTf)
+         .setNormalMatrix(viewTf.normalMatrix())
+         .setProjectionMatrix(projection)
+         .setLightPositions({{-3.0f, 10.0f, 10.0f, 0}})
+         //.setLightPosition({-3, 10, 10})
+         //.setDiffuseColor(0x2f83cc_rgbf)
+         .draw(mesh);
 
-        Matrix4 viewTf = arcball->viewMatrix();
-        phong
-             .bindDiffuseTexture(texture)
-             .setTransformationMatrix(viewTf)
-             .setNormalMatrix(viewTf.normalMatrix())
-             .setProjectionMatrix(projection)
-             .setLightPositions({{-3.0f, 10.0f, 10.0f, 0}})
-             //.setLightPosition({-3, 10, 10})
-             //.setDiffuseColor(0x2f83cc_rgbf)
-             .draw(mesh);
+    /* render the texture into the upper right corner ontop */
+    auto vp = GL::defaultFramebuffer.viewport();
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
-        /* render the texture into the upper right corner ontop */
-        auto vp = GL::defaultFramebuffer.viewport();
-        GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-        GL::defaultFramebuffer.setViewport({vp.max()*2./3., vp.max()});
-        triangleShader.bindTexture(texture)
-                      .draw(GL::Mesh{}.setCount(3));
-        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-        GL::defaultFramebuffer.setViewport(vp);
+    GL::defaultFramebuffer.setViewport({vp.max()*2./3., vp.max()});
+    GL::Texture2D* tex;
+    switch(currentOption) {
+        case 0 : tex = &texture; break;
+        case 1 : tex = &keyFrames[currentKf].image; break;
+        case 2 : tex = &renderedImage; break;
     }
+    triangleShader.bindTexture(*tex)
+                  .draw(GL::Mesh{}.setCount(3));
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::defaultFramebuffer.setViewport(vp);
 
     drawOptions();
 
@@ -388,9 +441,14 @@ void Viewer::drawEvent() {
         redraw();
 }
 
-ceres::TerminationType Viewer::runOptimization(UniqueFunction<bool()> cb) {
-    m_tmo->setTexture(texture);
-    return m_tmo->run(std::move(cb));
+bool Viewer::startOptimization() {
+    auto summary = runOptimization(keyFrames,
+                                   texture,
+                                   *renderPass,
+                                   [this]{ return mainLoopIteration(); }
+    );
+    return false;
 }
+
 
 }

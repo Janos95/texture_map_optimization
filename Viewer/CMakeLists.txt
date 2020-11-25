@@ -1,18 +1,19 @@
 
-corrade_add_resource(viewer_RESOURCES resources.conf)
-add_library(viewer SHARED
+corrade_add_resource(Viewer_RESOURCES resources.conf)
+add_library(Viewer SHARED
         Viewer.cpp
         Viewer.h
         ArcBall.cpp
         ArcBall.h
-        ${viewer_RESOURCES}
+        IO.cpp
+        IO.h
+        ${Viewer_RESOURCES}
         )
 
-target_include_directories(viewer PUBLIC ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(viewer
+target_include_directories(Viewer PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(Viewer
         PUBLIC
             Magnum::GL
-            Magnum::SceneGraph
             Magnum::Magnum
             Magnum::MeshTools
             Magnum::SceneGraph
@@ -22,10 +23,9 @@ target_link_libraries(viewer
             Magnum::Primitives
             Magnum::DebugTools
             MagnumIntegration::ImGui
-            tmo::shaders
-            tmo::io
-            tmo::optimization
+            Tmo::Shaders
+            Tmo::Optimization
             scoped_timer::scoped_timer
         )
 
-add_library(tmo::viewer ALIAS viewer)
+add_library(Tmo::Viewer ALIAS Viewer)

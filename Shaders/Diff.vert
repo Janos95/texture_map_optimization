@@ -4,14 +4,12 @@ in highp vec4 position;
 layout(location = TEXTURECOORDINATES_ATTRIBUTE_LOCATION)
 in mediump vec2 textureCoordinates;
 
-layout(location = TRANSFORMATION_MATRIX_ATTRIBUTE_LOCATION)
-in highp mat4 instancedTransformationMatrix;
-
-uniform mat4 projectionMatrix;
+uniform mat4 projectionTransformationMatrix;
 
 out vec2 interpolatedTextureCoordinates;
-
+out vec3 worldPosition;
 void main() {
-    gl_Position = projectionMatrix*instancedTransformationMatrix*position;
+    gl_Position = projectionTransformationMatrix*position;
     interpolatedTextureCoordinates = textureCoordinates;
+    worldPosition = position.xyz;
 }

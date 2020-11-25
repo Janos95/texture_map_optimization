@@ -9,9 +9,9 @@
 #include <Magnum/Math/Color.h>
 #include <Magnum/Trade/MeshData.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Shaders/Flat.h>
 
-using namespace Magnum;
-using namespace Corrade;
+#include <assert.h>
 
 namespace TextureMapOptimization {
 
@@ -43,26 +43,22 @@ void setupTextureArray(GL::Texture2DArray& texture, Vector3i const& size, GL::Te
 
 }
 
-RenderPass::RenderPass(Trade::MeshData const& meshData, Containers::Array<KeyFrame>& keyFrames) : m_keyFrames(keyFrames) {
+RenderPass::RenderPass(GL::Mesh& mesh, Array<KeyFrame>& keyFrames) : m_mesh(mesh), m_keyFrames(keyFrames) {
 
     m_imageSize = keyFrames.front().image.imageSize(0);
     m_fb = GL::Framebuffer{{{}, m_imageSize}};
-
-    m_mesh = MeshTools::compile(meshData, MeshTools::CompileFlag::GenerateSmoothNormals);
 
     //m_mesh.addVertexBufferInstanced(m_instancedTransformations, 1, 0, Shaders::Diff::TransformationMatrix{});
 
     /* textures for intermediate steps in gradient computation */
     Int layerCount = m_keyFrames.size();
-    Vector3i texArraySize{m_imageSize/(1u << m_depthFilterReductionFactor), layerCount};
-    setupTextureArray(m_depth, texArraySize, GL::TextureFormat::DepthComponent32F);
-    setupTextureArray(m_costs, texArraySize, GL::TextureFormat::RG32F);
-    setupTextureArray(m_gradientRotations, texArraySize, GL::TextureFormat::RGBA32F);
-    setupTextureArray(m_gradientTranslations, texArraySize, GL::TextureFormat::RGBA32F);
+    setupTexture(m_depth, m_imageSize, GL::TextureFormat::DepthComponent32F);
+    setupTexture(m_costs, m_imageSize, GL::TextureFormat::RG32F);
+    setupTexture(m_gradientRotations, m_imageSize, GL::TextureFormat::RGBA32F);
+    setupTexture(m_gradientTranslations, m_imageSize, GL::TextureFormat::RGBA32F);
 
 
     setupTexture(m_texCoordsTexture, m_imageSize, GL::TextureFormat::RGBA32F);
-    setupTexture(m_depthSingle, m_imageSize, GL::TextureFormat::DepthComponent32F);
 }
 
 void RenderPass::setTexture(GL::Texture2D& texture) {
@@ -76,33 +72,52 @@ void RenderPass::setTexture(GL::Texture2D& texture) {
     setupTexture(m_count, m_textureSize, GL::TextureFormat::R32F);
 }
 
+void RenderPass::setFramebufferMode(FramebufferMode mode) {
+
+    if(m_fbMode != mode && mode == FramebufferMode::ColorAveragingPass) {
+        m_fb.attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_depth, 0)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_texCoordsTexture, 0)
+            .mapForDraw(GL::Framebuffer::ColorAttachment{0});
+    }
+
+    if(m_fbMode != mode && mode ==  FramebufferMode::OptimizationPass) {
+        m_fb.attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_depth, 0)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_costs, 0)
+            .attachTexture(GL::Framebuffer::ColorAttachment{1}, m_gradientRotations, 0)
+            .attachTexture(GL::Framebuffer::ColorAttachment{2}, m_gradientTranslations, 0);
+    }
+
+    m_fb.bind();
+    CORRADE_INTERNAL_ASSERT(m_fb.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+    m_fbMode = mode;
+}
+
 void RenderPass::optimizationPass(const double* const* params, double* residuals, double** jacobians) {
     m_profilerComputeGradient.beginFrame();
+
+    setFramebufferMode(FramebufferMode::OptimizationPass);
 
     Mg::Vector2i size = m_imageSize;
     int level = 0;
 
-    if(m_fbMode != FramebufferMode::OptimizationPass) {
-        m_fb.attachLayeredTexture(GL::Framebuffer::BufferAttachment::Depth, m_depth, 0)
-            .attachLayeredTexture(GL::Framebuffer::ColorAttachment{0}, m_costs, 0)
-            .attachLayeredTexture(GL::Framebuffer::ColorAttachment{1}, m_gradientRotations, 0)
-            .attachLayeredTexture(GL::Framebuffer::ColorAttachment{2}, m_gradientTranslations, 0);
-    }
-
-    m_fb.clear(GL::FramebufferClear::Depth|GL::FramebufferClear::Color)
-        .bind();
-
-    //m_diff.setProjectionMatrix(m_projection)
-    //      .bindTexture(*m_texture)
-    //      .draw(m_mesh);
+    m_fb.clear(GL::FramebufferClear::Depth|GL::FramebufferClear::Color);
 
     for(std::size_t i = 0; i < m_keyFrames.size(); ++i) {
+        m_keyFrames[i].uncompressPose();
+
         m_fb.clear(GL::FramebufferClear::Depth | GL::FramebufferClear::Color);
 
         Vector3 rotation(params[i][0], params[i][1], params[i][2]);
         Vector3 translation(params[i][3], params[i][4], params[i][5]);
 
+        auto view = m_keyFrames[i].pose.invertedRigid();
 
+        m_diff.setTranslation(translation)
+              .setRotation(rotation)
+              .setProjectionTransformationMatrix(m_projection*view)
+              .setCameraParameters(m_fx, m_fy, m_cx, m_cy)
+              .bindGroundTruthTexture(m_keyFrames[i].image)
+              .bindOptimizationTexture(*m_texture);
 
         //m_depthFilter.bindCosts(m_cost)
         //             .bindRotationGradients(m_gradientRotations)
@@ -124,13 +139,13 @@ void RenderPass::optimizationPass(const double* const* params, double* residuals
     Cr::Containers::Array<char> dataRotations(sizeof(Float)*3*levelCount);
     Cr::Containers::Array<char> dataTranslations(sizeof(Float)*3*levelCount);
 
-    m_costs.image(levelCount - 1, Mg::MutableImageView3D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1, levelCount}, dataCosts});
-    m_gradientRotations.image(levelCount - 1, Mg::MutableImageView3D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1, levelCount}, dataRotations});
-    m_gradientTranslations.image(levelCount - 1, Mg::MutableImageView3D{Mg::GL::PixelFormat::RG, Mg::GL::PixelType::Float, {1, 1, levelCount}, dataTranslations});
+    m_costs.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1}, dataCosts});
+    m_gradientRotations.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1}, dataRotations});
+    m_gradientTranslations.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RG, Mg::GL::PixelType::Float, {1, 1}, dataTranslations});
 
-    auto rotView = Containers::arrayCast<Float>(dataCosts);
-    auto transView = Containers::arrayCast<Vector3>(dataRotations);
-    auto costView = Containers::arrayCast<Vector3>(dataTranslations);
+    auto rotView = arrayCast<Float>(dataCosts);
+    auto transView = arrayCast<Vector3>(dataRotations);
+    auto costView = arrayCast<Vector3>(dataTranslations);
 
     //for(std::size_t i = 0; i < m_results.size(); ++i) {
     //    residuals[i] = m_results[i].cost;
@@ -149,32 +164,12 @@ void RenderPass::optimizationPass(const double* const* params, double* residuals
 void RenderPass::averagingPass() {
     ScopedTimer t{"Averaging all colors", true};
 
-    if(m_fbMode != FramebufferMode::ColorAveragingPass) {
-        m_fb.attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_depthSingle, 0)
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_texCoordsTexture, 0)
-            .mapForDraw(GL::Framebuffer::ColorAttachment{0})
-            .bind();
-
-        m_fbMode = FramebufferMode::ColorAveragingPass;
-
-        CORRADE_INTERNAL_ASSERT(m_fb.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
-    }
+    setFramebufferMode(FramebufferMode::ColorAveragingPass);
 
     m_fb.clear(GL::FramebufferClear::Depth | GL::FramebufferClear::Color);
 
     Vector3ui wgCount1(m_imageSize.x(), m_imageSize.y(), 1);
     Vector3ui wgCount2(m_textureSize.x(), m_textureSize.y(), 1);
-
-    const auto map = DebugTools::ColorMap::turbo();
-    const Vector2i mapSize{Int(map.size()), 1};
-
-    GL::Texture2D colorMapTexture;
-    colorMapTexture
-            .setMinificationFilter(SamplerFilter::Linear)
-            .setMagnificationFilter(SamplerFilter::Linear)
-            .setWrapping(SamplerWrapping::ClampToEdge) // or Repeat
-            .setStorage(1, GL::TextureFormat::RGB8, mapSize) // or SRGB8
-            .setSubImage(0, {}, ImageView2D{PixelFormat::RGB8Srgb, mapSize, map});
 
     m_fb.clearColor(0, Color4{});
 
@@ -182,7 +177,7 @@ void RenderPass::averagingPass() {
         kf.uncompressPose();
         m_fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
-        m_texCoordsShader.setTransformationProjectionMatrix(kf.projection*kf.pose.inverted())
+        m_texCoordsShader.setTransformationProjectionMatrix(m_projection*kf.pose.inverted())
                          .draw(m_mesh);
 
         m_remap.bindTextureR(m_red)
@@ -205,6 +200,28 @@ void RenderPass::averagingPass() {
 
     //GL::Renderer::setMemoryBarrier(Mg::GL::Renderer::MemoryBarrier::TextureFetch);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
+}
+
+void RenderPass::renderKeyPose(GL::Texture2D& image, size_t idx) {
+    m_fb.attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_depth, 0)
+        .attachTexture(GL::Framebuffer::ColorAttachment{0}, image, 0)
+        .mapForDraw(GL::Framebuffer::ColorAttachment{0})
+        .bind();
+
+    CORRADE_INTERNAL_ASSERT(m_fb.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+
+    auto& kf = m_keyFrames[idx];
+
+    m_fb.clear(GL::FramebufferClear::Depth|GL::FramebufferClear::Color);
+    Mg::Shaders::Flat3D flat{Mg::Shaders::Flat3D::Flag::Textured};
+    assert(m_texture);
+    flat.bindTexture(*m_texture)
+        .setTransformationProjectionMatrix(m_projection*kf.pose.invertedRigid())
+        .draw(m_mesh);
+}
+
+void RenderPass::renderGradient(GL::Texture2D& image, size_t idx) {
+   //TODO
 }
 
 }

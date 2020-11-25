@@ -1,7 +1,7 @@
 
 corrade_add_resource(TMO_Rcs resources.conf)
 
-add_library(shaders SHARED
+add_library(Shaders SHARED
         Diff.h
         Diff.cpp
         TextureCoordinates.h
@@ -14,23 +14,20 @@ add_library(shaders SHARED
         Remap.h
         Combine.cpp
         Combine.h
-        DepthFilter.cpp
-        DepthFilter.h
         Reduction.cpp
         Reduction.h
-        DepthFilter.cpp
-        DepthFilter.h
+        #DepthFilter.cpp
+        #DepthFilter.h
         ${TMO_Rcs} )
 
 
-target_include_directories(shaders PUBLIC ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(shaders
+target_include_directories(Shaders PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(Shaders
         PUBLIC
             Magnum::Magnum
             Magnum::Shaders
-            tmo::utilities
+            Tmo::Utilities
             scoped_timer::scoped_timer
         )
 
-set_property(TARGET shaders PROPERTY POSITION_INDEPENDENT_CODE ON)
-add_library(tmo::shaders ALIAS shaders)
+add_library(Tmo::Shaders ALIAS Shaders)
