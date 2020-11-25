@@ -12,21 +12,26 @@ using namespace Corrade;
 
 namespace TextureMapOptimization {
 
-void KeyFrame::compressPose() {
+StaticArray<6,double> compressTransformationMatrix(const Matrix4& pose) {
     Matrix3 rot{pose[0].xyz(), pose[1].xyz(), pose[2].xyz()};
     Quaternion q = Quaternion::fromMatrix(rot);
     Rad angle = q.angle();
     auto axis = q.axis();
-    CORRADE_ASSERT(angle <= Rad{2.f*M_PI} && angle >= Rad{0}, "angle negative",);
+
+    CORRADE_CONSTEXPR_ASSERT(angle <= Rad{2.f*M_PI} && angle >= Rad{0}, "angle negative");
+
     Vector3 rotation = axis*float(angle);
     Vector3 translation = pose.translation();
+
+    StaticArray<6, double> pose6D;
     for(int i = 0; i < 3; ++i) {
         pose6D[i] = rotation[i];
         pose6D[i + 3] = translation[i];
     }
+    return pose6D;
 }
 
-void KeyFrame::uncompressPose() {
+Matrix4 uncompress6DTransformation(const StaticArrayView<6, const double>& pose6D) {
     Vector3 rotation;
     Vector3 translation;
     for(int i = 0; i < 3; ++i) {
@@ -34,7 +39,15 @@ void KeyFrame::uncompressPose() {
         translation[i] = pose6D[i + 3];
     }
     Debug{} << rotation;
-    pose = Matrix4::translation(translation)*Matrix4::rotation(Rad{rotation.length()}, rotation.normalized());
+    return Matrix4::translation(translation)*Matrix4::rotation(Rad{rotation.length()}, rotation.normalized());
+}
+
+void KeyFrame::compressPose() {
+    pose6D = compressTransformationMatrix(pose);
+}
+
+void KeyFrame::uncompressPose() {
+    pose = uncompress6DTransformation(pose6D);
 }
 
 }

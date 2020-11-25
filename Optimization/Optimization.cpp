@@ -4,7 +4,7 @@
 
 #include "Optimization.h"
 #include "Cost.h"
-#include "ScopedTimer/ScopedTimer.h"
+#include "ScopedTimer.h"
 #include "UniqueFunction.h"
 
 #include <Magnum/Math/Color.h>
@@ -46,14 +46,11 @@ bool runOptimization(
         }
     }};
 
-    std::vector<double*> parameterBlocks(kfs.size());
-    for(std::size_t i = 0; i < kfs.size(); ++i) {
-        kfs[i].compressPose();
-        parameterBlocks[i] = kfs[i].pose6D.data();
-    }
-
     ceres::Problem problem;
-    problem.AddResidualBlock(new PhotometricCost{renderPass}, new ceres::TrivialLoss{}, parameterBlocks);
+
+    for(std::size_t i = 0; i < kfs.size(); ++i) {
+        problem.AddResidualBlock(new PhotometricCost{i, renderPass}, new ceres::TrivialLoss{}, kfs[i].pose6D.data());
+    }
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_SCHUR;

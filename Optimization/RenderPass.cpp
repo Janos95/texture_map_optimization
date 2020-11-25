@@ -92,41 +92,25 @@ void RenderPass::setFramebufferMode(FramebufferMode mode) {
     m_fbMode = mode;
 }
 
-void RenderPass::optimizationPass(const double* const* params, double* residuals, double** jacobians) {
+void RenderPass::optimizationPass(size_t idx, const double* params, double& residual, double* gradient) {
     m_profilerComputeGradient.beginFrame();
 
     setFramebufferMode(FramebufferMode::OptimizationPass);
-
-    Mg::Vector2i size = m_imageSize;
-    int level = 0;
-
     m_fb.clear(GL::FramebufferClear::Depth|GL::FramebufferClear::Color);
 
-    for(std::size_t i = 0; i < m_keyFrames.size(); ++i) {
-        m_keyFrames[i].uncompressPose();
+    Vector3 rotation(params[0], params[1], params[2]);
+    Vector3 translation(params[3], params[4], params[5]);
 
-        m_fb.clear(GL::FramebufferClear::Depth | GL::FramebufferClear::Color);
+    auto view = uncompress6DTransformation(StaticArrayView<6,const double>{params});
+    Vector3ui wgCount(m_imageSize.x(), m_imageSize.y(), 1);
 
-        Vector3 rotation(params[i][0], params[i][1], params[i][2]);
-        Vector3 translation(params[i][3], params[i][4], params[i][5]);
-
-        auto view = m_keyFrames[i].pose.invertedRigid();
-
-        m_diff.setTranslation(translation)
-              .setRotation(rotation)
-              .setProjectionTransformationMatrix(m_projection*view)
-              .setCameraParameters(m_fx, m_fy, m_cx, m_cy)
-              .bindGroundTruthTexture(m_keyFrames[i].image)
-              .bindOptimizationTexture(*m_texture);
-
-        //m_depthFilter.bindCosts(m_cost)
-        //             .bindRotationGradients(m_gradientRotations)
-        //             .bindTranslationGradients(m_gradientTranslations)
-        //             .bindCostsAccumulated(m_costAccumulated, i)
-        //             .bindRotationGradientsAccumulated(m_gradientRotationsAccumulated, i)
-        //             .bindTranslationGradientsAccumulated(m_gradientTranslationsAccumulated, i)
-        //             .bindDepth(m_depth);
-    }
+    m_diff.setTranslation(translation)
+          .setRotation(rotation)
+          .setProjectionTransformationMatrix(m_projection*view)
+          .setCameraParameters(m_fx, m_fy, m_cx, m_cy)
+          .bindGroundTruthTexture(m_keyFrames[idx].image)
+          .bindOptimizationTexture(*m_texture)
+          .dispatchCompute(wgCount);
 
     m_costs.generateMipmap();
     m_gradientRotations.generateMipmap();
@@ -135,27 +119,21 @@ void RenderPass::optimizationPass(const double* const* params, double* residuals
     Int levelCount = Math::log2(m_imageSize.max()) + 1;
 
     /* download the last mip level */
-    Cr::Containers::Array<char> dataCosts(sizeof(Float)*levelCount);
-    Cr::Containers::Array<char> dataRotations(sizeof(Float)*3*levelCount);
-    Cr::Containers::Array<char> dataTranslations(sizeof(Float)*3*levelCount);
+    float costHom[2];
+    float gradRotHom[4];
+    float gradTransHom[4];
 
-    m_costs.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1}, dataCosts});
-    m_gradientRotations.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RGBA, Mg::GL::PixelType::Float, {1, 1}, dataRotations});
-    m_gradientTranslations.image(levelCount - 1, Mg::MutableImageView2D{Mg::GL::PixelFormat::RG, Mg::GL::PixelType::Float, {1, 1}, dataTranslations});
+    m_costs.image(levelCount-1,Mg::MutableImageView2D{GL::PixelFormat::RG,GL::PixelType::Float, {1, 1}, costHom});
+    m_gradientRotations.image(levelCount-1, Mg::MutableImageView2D{GL::PixelFormat::RGBA, GL::PixelType::Float, {1, 1}, gradRotHom});
+    m_gradientTranslations.image(levelCount-1, Mg::MutableImageView2D{GL::PixelFormat::RGBA, GL::PixelType::Float, {1, 1}, gradTransHom});
 
-    auto rotView = arrayCast<Float>(dataCosts);
-    auto transView = arrayCast<Vector3>(dataRotations);
-    auto costView = arrayCast<Vector3>(dataTranslations);
-
-    //for(std::size_t i = 0; i < m_results.size(); ++i) {
-    //    residuals[i] = m_results[i].cost;
-    //    if(jacobians && jacobians[i]) {
-    //        for(int j = 0; j < 3; ++j) {
-    //            jacobians[0][3*i + j] = m_results[i].rotationGrad[j];
-    //            jacobians[1][3*i + j] = m_results[i].translationGrad[j];
-    //        }
-    //    }
-    //}
+    residual = costHom[0]/costHom[1];
+    if(gradient) {
+        for(int j = 0; j < 3; ++j) {
+            gradient[j] = gradRotHom[j]/gradRotHom[3];
+            gradient[3 + j] = gradTransHom[j]/gradTransHom[3];
+        }
+    }
 
     m_profilerComputeGradient.endFrame();
     m_profilerComputeGradient.printStatistics(10);

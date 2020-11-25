@@ -8,7 +8,7 @@
 #include "UniqueFunction.h"
 #include "Optimization.h"
 
-#include <ScopedTimer/ScopedTimer.h>
+#include "../ScopedTimer/ScopedTimer.h"
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Containers/GrowableArray.h>

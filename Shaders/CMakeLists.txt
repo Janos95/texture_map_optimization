@@ -27,7 +27,7 @@ target_link_libraries(Shaders
             Magnum::Magnum
             Magnum::Shaders
             Tmo::Utilities
-            scoped_timer::scoped_timer
+            Tmo::ScopedTimer
         )
 
 add_library(Tmo::Shaders ALIAS Shaders)

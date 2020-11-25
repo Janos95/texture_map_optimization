@@ -6,7 +6,6 @@
 
 #include "KeyFrame.h"
 #include "Diff.h"
-//#include "DepthFilter.h"
 #include "Reduction.h"
 #include "TextureCoordinates.h"
 #include "Remap.h"
@@ -44,20 +43,47 @@ public:
 
     CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
 
-    RenderPass(GL::Mesh&, Cr::Containers::Array<KeyFrame>&);
+    RenderPass(GL::Mesh&, Array<KeyFrame>&);
 
     void setTexture(GL::Texture2D& texture);
 
-    void optimizationPass(double const* const* params, double* costs, double** jacobians);
+    void optimizationPass(size_t idx, double const* params, double& cost, double* gradient);
 
+    /**
+     * For each key frame computes dense texture coordinates.
+     * Then uses the texture coordinates to map color values
+     * from the ground truth image into the texture. Since this
+     * has do be done atomically, the texture is split into its
+     * three rgb channels and then combined later, when all
+     * key frames have been processed.
+     */
     void averagingPass();
 
+    /**
+     * prepares the framebuffer for either running
+     * an averaging pass or an optimization pass.
+     */
     void setFramebufferMode(FramebufferMode);
 
+    /**
+     * Utility for rendering a key frame using the
+     * textured mesh.
+     * @param image texture into which to render.
+     * This must be allocated already.
+     * @param idx keyframe index to render
+     */
     void renderKeyPose(GL::Texture2D& image, size_t idx);
 
     void renderGradient(GL::Texture2D& image, size_t idx);
 
+    /**
+     * @param nx image width
+     * @param ny image height
+     * @param fx focal length wrt. pixel width
+     * @param fy focal length wrt. pixel height
+     * @param cx x coordinate of central point
+     * @param cy y coordinate of central point
+     */
     void setCameraParameters(float nx, float ny, float fx, float fy, float cx, float cy) {
         auto fov = Math::atan(nx/(2*fx));
         m_projection = Matrix4::perspectiveProjection(2*fov, nx/ny, 0.01, 10);
@@ -66,25 +92,6 @@ public:
         m_fy = fy;
         m_cx = cx;
         m_cy = cy;
-    }
-
-    void clearImages() {
-
-        //using L = std::initializer_list<std::pair<GL::Texture2D*, GL::TextureFormat>>;
-        //for(auto[tex, format] : L{
-        //        {&texture, GL::TextureFormat::RGBA32F},
-        //        {&texR,    GL::TextureFormat::R32F},
-        //        {&texG,    GL::TextureFormat::R32F},
-        //        {&texB,    GL::TextureFormat::R32F},
-        //        {&texA,    GL::TextureFormat::R32F}
-        //}) {
-        //    *tex = GL::Texture2D{};
-        //    setupTexture(*tex, size, format);
-
-        //    fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, *tex, 0)
-        //      .clearColor(0, Color4{})
-        //      .clear(GL::FramebufferClear::Color);
-        //}
     }
 
 private:
@@ -100,7 +107,6 @@ private:
     GL::Framebuffer m_fb{Mg::NoCreate};
 
     UnsignedInt m_depthFilterReductionFactor = 3;
-
 
     Shaders::Diff m_diff;
     Shaders::TextureCoordinates m_texCoordsShader;

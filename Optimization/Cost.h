@@ -10,20 +10,22 @@
 
 namespace TextureMapOptimization {
 
-class PhotometricCost : public ceres::CostFunction {
+class PhotometricCost : public ceres::SizedCostFunction<1, 6> {
 public:
 
-    explicit PhotometricCost(RenderPass& renderPass) : m_renderPass(renderPass) {}
+    explicit PhotometricCost(size_t idx, RenderPass& renderPass) : m_kfIdx(idx), m_renderPass(renderPass) {}
 
     bool Evaluate(double const* const* parameters,
                   double* residuals,
                   double** jacobians) const override {
-        m_renderPass.optimizationPass(parameters, residuals, jacobians);
+        double* grad = jacobians ? *jacobians : nullptr ;
+        m_renderPass.optimizationPass(m_kfIdx, *parameters, *residuals, grad);
         return true;
     }
 
 private:
 
+    size_t m_kfIdx;
     RenderPass& m_renderPass;
 };
 

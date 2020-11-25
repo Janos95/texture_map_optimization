@@ -25,7 +25,7 @@ target_link_libraries(Viewer
             MagnumIntegration::ImGui
             Tmo::Shaders
             Tmo::Optimization
-            scoped_timer::scoped_timer
+            Tmo::ScopedTimer
         )
 
 add_library(Tmo::Viewer ALIAS Viewer)

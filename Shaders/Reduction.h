@@ -5,7 +5,7 @@
 #ifndef TEXTUREOPTIMIZATION_REDUCTION_H
 #define TEXTUREOPTIMIZATION_REDUCTION_H
 
-#include <ScopedTimer/ScopedTimer.h>
+#include "../ScopedTimer/ScopedTimer.h"
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
