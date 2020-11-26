@@ -10,6 +10,7 @@
 #include "Types.h"
 #include "Utilities.h"
 #include "RenderPass.h"
+#include "UniqueFunction.h"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StaticArray.h>
@@ -66,7 +67,7 @@ struct Viewer : public Mg::Platform::Application {
      * iteration after each optimization pass to not block
      * the GUI.
      */
-    bool startOptimization();
+    void startOptimization();
 
     bool isOptimizing = false;
 
@@ -101,6 +102,9 @@ struct Viewer : public Mg::Platform::Application {
     GL::Texture2D renderedImage{Mg::NoCreate};
 
     Optional<RenderPass> renderPass;
+
+    GL::Texture2D* overlay = &texture;
+    UniqueFunction<void()> onNewKeyFrame = []{};
 };
 
 }

@@ -3,19 +3,19 @@ layout(local_size_x = 1, local_size_y = 1) in;
 layout(rg32f, binding = 0)
 uniform readonly image2DArray costInput;
 
-layout(rgba32f, binding = 0)
+layout(rgba32f, binding = 1)
 uniform readonly image2DArray rotationInput;
 
-layout(rgba32f, binding = 0)
+layout(rgba32f, binding = 3)
 uniform readonly image2DArray translationInput;
 
-layout(rg32f, binding = 1)
+layout(rg32f, binding = 4)
 uniform writeonly image2DArray costOutput;
 
-layout(rgba32f, binding = 1)
+layout(rgba32f, binding = 5)
 uniform writeonly image2DArray rotationOutput;
 
-layout(rgba32f, binding = 1)
+layout(rgba32f, binding = 6)
 uniform writeonly image2DArray translationOutput;
 
 void main()

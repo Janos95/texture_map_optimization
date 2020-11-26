@@ -17,6 +17,7 @@ using Magnum::Double;
 using Magnum::Int;
 
 using Magnum::Vector3;
+using Magnum::Vector4;
 using Magnum::Vector3i;
 using Magnum::Vector3ui;
 using Magnum::Vector2;

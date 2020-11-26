@@ -6,18 +6,22 @@
 
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/Resource.h>
+
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/GL/Texture.h>
+#include <Magnum/Math/Vector3.h>
+#include <Magnum/Math/Matrix4.h>
 
-using namespace Magnum;
+namespace Cr = Corrade;
 
 namespace TextureMapOptimization::Shaders {
 
 Diff::Diff() {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL450);
 
-    Utility::Resource rs{"tmo-data"};
+    Cr::Utility::Resource rs{"tmo-data"};
 
     GL::Shader vert{GL::Version::GL450, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL450, GL::Shader::Type::Fragment};
@@ -57,6 +61,22 @@ Diff& Diff::setCameraParameters(float fx, float fy, float cx, float cy) {
     setUniform(m_fyUniform, fy);
     setUniform(m_cxUniform, cx);
     setUniform(m_cyUniform, cy);
+    return *this;
+}
+
+
+Diff& Diff::setProjectionTransformationMatrix(Mg::Matrix4 const& projTf) {
+    setUniform(m_projTfUniform, projTf);
+    return *this;
+}
+
+Diff& Diff::bindGroundTruthTexture(GL::Texture2D& texture) {
+    texture.bind(0);
+    return *this;
+}
+
+Diff& Diff::bindOptimizationTexture(GL::Texture2D& texture) {
+    texture.bind(1);
     return *this;
 }
 

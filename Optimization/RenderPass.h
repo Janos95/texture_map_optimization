@@ -7,6 +7,7 @@
 #include "KeyFrame.h"
 #include "Diff.h"
 #include "Reduction.h"
+#include "Vis.h"
 #include "TextureCoordinates.h"
 #include "Remap.h"
 #include "Combine.h"
@@ -65,16 +66,25 @@ public:
      */
     void setFramebufferMode(FramebufferMode);
 
+    enum class VisualizatonFlag {
+        Cost = 1,
+        RotationGradient = 2,
+        TranslationGradient = 3,
+        RenderedImage = 4,
+    };
+
     /**
-     * Utility for rendering a key frame using the
-     * textured mesh.
-     * @param image texture into which to render.
+     * Utility for rendering some feature of
+     * a specific key frame into a texture. This
+     * is mainly useful for debuggin purposes.
+     * @param image texture into which we want to render.
      * This must be allocated already.
      * @param idx keyframe index to render
+     * @param flag to choose between different features
+     * like gradients, cost or simply a synthetic view
+     * of the key frame.
      */
-    void renderKeyPose(GL::Texture2D& image, size_t idx);
-
-    void renderGradient(GL::Texture2D& image, size_t idx);
+    void renderIntoTexture(GL::Texture2D& image, size_t idx, VisualizatonFlag flag);
 
     /**
      * @param nx image width
@@ -94,6 +104,13 @@ public:
         m_cy = cy;
     }
 
+    /**
+     * This reloads and recompiles the shaders.
+     * This is nice for interactivley debugging/editing
+     * shaders;
+     */
+    void reloadShader();
+
 private:
 
     GL::Mesh& m_mesh;
@@ -112,6 +129,8 @@ private:
     Shaders::TextureCoordinates m_texCoordsShader;
     Shaders::Remap m_remap;
     Shaders::Combine m_combine;
+    Shaders::Vis m_vis;
+    Shaders::Reduction m_reduction;
 
     GL::Texture2D m_gradientRotations, m_gradientTranslations, m_costs;
 
@@ -124,7 +143,7 @@ private:
     Vector2i m_imageSize;
     Vector2i m_textureSize;
 
-    FramebufferMode m_fbMode = {};
+    FramebufferMode m_fbMode{0};
 
     /* Profiling */
     Mg::DebugTools::GLFrameProfiler m_profilerGenerateTexture{
@@ -134,6 +153,8 @@ private:
     Mg::DebugTools::GLFrameProfiler m_profilerComputeGradient{
             Mg::DebugTools::GLFrameProfiler::Value::FrameTime|
             Mg::DebugTools::GLFrameProfiler::Value::CpuDuration, 180};
+
+    GL::Texture2D m_turbo; //colormap
 
 };
 

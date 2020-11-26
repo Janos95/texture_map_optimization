@@ -51,9 +51,7 @@ int main(int argc, char** argv){
 
     while(viewer.mainLoopIteration()){
         if(viewer.isOptimizing){
-            bool ret = viewer.startOptimization();
-            if(ret)
-                break;
+            viewer.startOptimization();
             viewer.isOptimizing = false;
         }
     }

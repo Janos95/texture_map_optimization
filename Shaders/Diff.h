@@ -8,8 +8,8 @@
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
-#include <Magnum/Math/Matrix4.h>
-#include <Magnum/GL/Texture.h>
+#include <Magnum/Math/Math.h>
+#include <Magnum/GL/GL.h>
 
 namespace Mg = Magnum;
 
@@ -18,32 +18,19 @@ namespace TextureMapOptimization::Shaders {
 class Diff : public GL::AbstractShaderProgram {
 public:
 
-    using Position = Mg::Shaders::Generic3D::Position;
-    using TextureCoordinates = Mg::Shaders::Generic3D::TextureCoordinates;
-    using TransformationMatrix = Mg::Shaders::Generic3D::TransformationMatrix;
-
     Diff();
 
     Diff& setRotation(const Mg::Vector3& rot);
 
-    Diff& setCameraParameters(float, float, float, float);
+    Diff& setCameraParameters(float fx, float fy, float cx, float cy);
 
     Diff& setTranslation(Mg::Vector3 const& translation);
 
-    Diff& setProjectionTransformationMatrix(Mg::Matrix4 const& projTf) {
-        setUniform(m_projTfUniform, projTf);
-        return *this;
-    }
+    Diff& setProjectionTransformationMatrix(Mg::Matrix4 const& projTf);
 
-    Diff& bindGroundTruthTexture(GL::Texture2D& texture) {
-        texture.bind(0);
-        return *this;
-    }
+    Diff& bindGroundTruthTexture(GL::Texture2D& texture);
 
-    Diff& bindOptimizationTexture(GL::Texture2D& texture) {
-        texture.bind(1);
-        return *this;
-    }
+    Diff& bindOptimizationTexture(GL::Texture2D& texture);
 
 private:
     Int m_rotationUniform,

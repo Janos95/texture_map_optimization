@@ -16,6 +16,8 @@ add_library(Shaders SHARED
         Combine.h
         Reduction.cpp
         Reduction.h
+        Vis.cpp
+        Vis.h
         #DepthFilter.cpp
         #DepthFilter.h
         ${TMO_Rcs} )

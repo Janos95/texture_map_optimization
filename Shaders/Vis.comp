@@ -1,0 +1,32 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+
+uniform float scale;
+uniform float offset;
+uniform bool useCost;
+
+layout(binding = 0)
+uniform sampler2D colorMap;
+
+layout(rgba32f, binding = 1)
+uniform writeonly image2D image;
+
+layout(rg32f, binding = 2)
+uniform readonly image2D cost;
+
+layout(rgba32f, binding = 3)
+uniform readonly image2D gradient;
+
+void main()
+{
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+
+    float value;
+    if(useCost)
+        value = imageLoad(cost, coords).x;
+    else
+        value = length(imageLoad(gradient, coords).xyz);
+
+    float colorMapCoord = scale*value + offset;
+    vec4 color = texture(colorMap, vec2(colorMapCoord,0));
+    imageStore(image, coords, color);
+}

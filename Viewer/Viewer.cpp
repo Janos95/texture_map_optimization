@@ -64,6 +64,35 @@ computeProjectionMatrix(float nx, float ny, float fx, float fy, float cx, float 
     return P;
 }
 
+/**
+ * If matrix is not rigid, project rotation part onto SO3.
+ * By default, we assume that the poses transform camera
+ * coordinates into world coordinates. For optimization
+ * we need the inverse of that. Furthermore we assume that
+ * the the transformation are in "computer vision" coordinates
+ * which is different from the coordinate conventions opengl
+ * uses, so we fix that as well.
+ * @param transformations
+ * @param cv2gl whether to do computer vision to opengl coordinate conversion
+ * @param invert if true, invert the transformations
+ */
+void preprocessTransformations(Array<Matrix4>& transformations, bool cv2gl = true, bool invert = true) {
+    for(auto& tf : transformations) {
+        if(!tf.isRigidTransformation()) {
+            Matrix3 rot{{tf[0].xyz(),
+                                tf[1].xyz(),
+                                tf[2].xyz()}};
+            auto [U, _, V] = Math::Algorithms::svd(rot);
+            tf = Matrix4::from(U*V.transposed(), tf.translation());
+            CORRADE_ASSERT(tf.isRigidTransformation(), "Couldn't salvage not rigid transformation",);
+        }
+        if(cv2gl)
+            tf = tf*Matrix4::scaling({1, -1, 1})*Matrix4::reflection({0, 0, 1});
+        if(invert)
+            tf = tf.invertedRigid();
+    }
+}
+
 void setupTexture(GL::Texture2D& texture, Vector2i const& size, GL::TextureFormat format) {
     texture = GL::Texture2D{};
     texture.setMagnificationFilter(GL::SamplerFilter::Linear)
@@ -122,19 +151,9 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
     /* setup scene*/
     {
         auto images = loadImages("/home/janos/TextureMapOptimization/assets/fountain_small/image"_s);
-        auto poses = loadPoses("/home/janos/TextureMapOptimization/assets/fountain_small/scene/key.log"_s);
+        auto transformations = loadPoses("/home/janos/TextureMapOptimization/assets/fountain_small/scene/key.log"_s);
 
-        /* if matrix is not rigid, project rotation part onto SO3 */
-        for(auto& pose : poses) {
-            if(!pose.isRigidTransformation()) {
-                Matrix3 rot{{pose[0].xyz(),
-                             pose[1].xyz(),
-                             pose[2].xyz()}};
-                auto [U, _, V] = Math::Algorithms::svd(rot);
-                pose = Matrix4::from(U*V.transposed(), pose.translation());
-                CORRADE_ASSERT(pose.isRigidTransformation(), "Couldn't solvage not rigid pose",);
-            }
-        }
+        preprocessTransformations(transformations);
 
         imageSize = images.front().size();
         Debug{} << "Image size of imported images" << imageSize;
@@ -150,7 +169,7 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
 
             kf.image.setSubImage(0, {}, images[i]);
             /*computer vision -> opengl */
-            kf.pose = poses[i]*Matrix4::scaling({1, -1, 1})*Matrix4::reflection({0, 0, 1});
+            kf.tf = transformations[i];
             kf.compressPose();
         }
 
@@ -166,6 +185,12 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
         renderPass.emplace(mesh, keyFrames);
         renderPass->setTexture(texture);
         renderPass->setCameraParameters(640.f, 480.f, 525.f, 525.f, 319.5f, 239.5f);
+
+        /* do one averaging pass so we have some color to begin with.
+         * Also set the camera to the first key frame pose */
+        renderPass->averagingPass();
+        auto pose = keyFrames[currentKf].tf.invertedRigid();
+        arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
     }
 
     /* Setup ImGui, load a better font */
@@ -215,21 +240,55 @@ void Viewer::drawOptions() {
 
     if(ImGui::InputInt("Keyframe Idx", &currentKf)) {
         currentKf = Math::clamp<int>(currentKf, 0, keyFrames.size() - 1);
-        if(currentOption == 2) {
-            renderPass->renderKeyPose(renderedImage, currentKf);
-            GL::DefaultFramebuffer().bind();
-        }
+        onNewKeyFrame();
     }
 
-    static const char* options[] = {"Texture", "Groundtruth Image", "Rendered Image"};
-    if(ImGui::BeginCombo("Color Map", options[currentOption])) {
+    static const char* options[] = {
+            "Texture",
+            "Groundtruth Image",
+            "Rendered Image",
+            "Cost",
+            "Rotation Gradient",
+            "Translation Gradient",
+    };
+
+    if(ImGui::BeginCombo("Overlay Options", options[currentOption])) {
         for(size_t i = 0; i < COUNTOF(options); ++i) {
             bool isSelected = i == currentOption;
             if(ImGui::Selectable(options[i], isSelected)) {
                 currentOption = i;
-                if(i == 2) {
-                    renderPass->renderKeyPose(renderedImage, currentKf);
-                    GL::DefaultFramebuffer().bind();
+                RenderPass::VisualizatonFlag visFlag{0};
+                switch(i) {
+                    case 0:
+                        overlay = &texture;
+                        onNewKeyFrame = []{}; /* remove old callback */
+                        break;
+                    case 1:
+                        onNewKeyFrame = [this]{ overlay = &keyFrames[currentKf].image; };
+                        onNewKeyFrame();
+                        break;
+                    case 2:
+                        visFlag = RenderPass::VisualizatonFlag::RenderedImage;
+                        break;
+                    case 3:
+                        visFlag = RenderPass::VisualizatonFlag::Cost;
+                        break;
+                    case 4:
+                        visFlag = RenderPass::VisualizatonFlag::RotationGradient;
+                        break;
+                    case 5:
+                        visFlag = RenderPass::VisualizatonFlag::TranslationGradient;
+                        break;
+
+                    default: CORRADE_ASSERT(false, "Unknown Overlay Option", );
+                }
+                if(bool(visFlag)) {
+                    onNewKeyFrame = [this, visFlag]{
+                        renderPass->renderIntoTexture(renderedImage, currentKf, visFlag);
+                        GL::DefaultFramebuffer().bind();
+                    };
+                    onNewKeyFrame();
+                    overlay = &renderedImage;
                 }
             }
             if(isSelected)
@@ -239,8 +298,12 @@ void Viewer::drawOptions() {
     }
 
     if(ImGui::Button("Camera To Keyframe")) {
-        const auto& pose = keyFrames[currentKf].pose;
+        const Matrix4 pose = keyFrames[currentKf].tf.invertedRigid();
         arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
+    }
+
+    if(ImGui::Button("Reload Shaders")) {
+        renderPass->reloadShader();
     }
 }
 
@@ -377,7 +440,8 @@ void Viewer::drawEvent() {
 
     if(drawPoses) {
         for(auto const& kf : keyFrames) {
-            vertexColored.setTransformationProjectionMatrix(projection*viewTf*kf.pose*Matrix4::scaling({0.1,0.1,0.1}))
+            Matrix4 tf = viewTf*kf.tf.invertedRigid()*Matrix4::scaling({0.1,0.1,0.1});
+            vertexColored.setTransformationProjectionMatrix(projection*tf)
                          .draw(axis);
         }
         //GL::Texture2D testTexture;
@@ -398,6 +462,8 @@ void Viewer::drawEvent() {
          .setLightPositions({{-3.0f, 10.0f, 10.0f, 0}})
          //.setLightPosition({-3, 10, 10})
          //.setDiffuseColor(0x2f83cc_rgbf)
+         .setSpecularColor(Color4{0.3})
+         .setShininess(20)
          .draw(mesh);
 
     /* render the texture into the upper right corner ontop */
@@ -405,13 +471,8 @@ void Viewer::drawEvent() {
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
     GL::defaultFramebuffer.setViewport({vp.max()*2./3., vp.max()});
-    GL::Texture2D* tex;
-    switch(currentOption) {
-        case 0 : tex = &texture; break;
-        case 1 : tex = &keyFrames[currentKf].image; break;
-        case 2 : tex = &renderedImage; break;
-    }
-    triangleShader.bindTexture(*tex)
+
+    triangleShader.bindTexture(*overlay)
                   .draw(GL::Mesh{}.setCount(3));
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::defaultFramebuffer.setViewport(vp);
@@ -437,17 +498,16 @@ void Viewer::drawEvent() {
 
     swapBuffers();
 
-    if(!isOptimizing)
-        redraw();
+    redraw();
 }
 
-bool Viewer::startOptimization() {
-    auto summary = runOptimization(keyFrames,
+void Viewer::startOptimization() {
+    [[maybe_unused]] bool userFailure = runOptimization(keyFrames,
                                    texture,
                                    *renderPass,
-                                   [this]{ return mainLoopIteration(); }
+                                   [this]{ return mainLoopIteration() && isOptimizing; }
     );
-    return false;
+    isOptimizing = false;
 }
 
 

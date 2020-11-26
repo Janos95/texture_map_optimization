@@ -38,16 +38,15 @@ Matrix4 uncompress6DTransformation(const StaticArrayView<6, const double>& pose6
         rotation[i] = pose6D[i];
         translation[i] = pose6D[i + 3];
     }
-    Debug{} << rotation;
     return Matrix4::translation(translation)*Matrix4::rotation(Rad{rotation.length()}, rotation.normalized());
 }
 
 void KeyFrame::compressPose() {
-    pose6D = compressTransformationMatrix(pose);
+    tf6D = compressTransformationMatrix(tf);
 }
 
 void KeyFrame::uncompressPose() {
-    pose = uncompress6DTransformation(pose6D);
+    tf = uncompress6DTransformation(tf6D);
 }
 
 }

@@ -38,33 +38,18 @@ Reduction::Reduction(UnsignedInt stepSize) {
 }
 
 
-Reduction& Reduction::bindRotationInImage(Magnum::GL::Texture2DArray& array, int level){
+Reduction& Reduction::bindRotationImage(Magnum::GL::Texture2DArray& array, int level){
     //array.bindImageLayered()
     //@TODO
     return *this;
 }
 
-Reduction& Reduction::bindTranslationInImage(Magnum::GL::Texture2DArray&, int level){
+Reduction& Reduction::bindTranslationImage(Magnum::GL::Texture2DArray&, int level){
     //@TODO
     return *this;
 }
 
-Reduction& Reduction::bindCostInImage(Magnum::GL::Texture2DArray&, int level){
-    //@TODO
-    return *this;
-}
-
-Reduction& Reduction::bindRotationOutImage(Magnum::GL::Texture2DArray&, int level){
-    //@TODO
-    return *this;
-}
-
-Reduction& Reduction::bindTranslationOutImage(Magnum::GL::Texture2DArray&, int level){
-    //@TODO
-    return *this;
-}
-
-Reduction& Reduction::bindCostOutImage(Magnum::GL::Texture2DArray&, int level){
+Reduction& Reduction::bindCostImage(Magnum::GL::Texture2DArray&, int level){
     //@TODO
     return *this;
 }

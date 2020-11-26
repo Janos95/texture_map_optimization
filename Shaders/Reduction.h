@@ -27,18 +27,16 @@ namespace TextureMapOptimization::Shaders {
 class Reduction : public Magnum::GL::AbstractShaderProgram {
 public:
 
-    explicit Reduction(Mg::UnsignedInt);
+    explicit Reduction(UnsignedInt step = 2);
 
     explicit Reduction(Magnum::NoCreateT) : Magnum::GL::AbstractShaderProgram{Magnum::NoCreate} {};
 
-    Reduction& bindRotationInImage(Magnum::GL::Texture2DArray&, int level);
-    Reduction& bindTranslationInImage(Magnum::GL::Texture2DArray&, int level);
-    Reduction& bindCostInImage(Magnum::GL::Texture2DArray&, int level);
+    Reduction& bindRotationImage(Magnum::GL::Texture2DArray&, int level);
+    Reduction& bindTranslationImage(Magnum::GL::Texture2DArray&, int level);
+    Reduction& bindCostImage(Magnum::GL::Texture2DArray&, int level);
 
-    Reduction& bindRotationOutImage(Magnum::GL::Texture2DArray&, int level);
-    Reduction& bindTranslationOutImage(Magnum::GL::Texture2DArray&, int level);
-    Reduction& bindCostOutImage(Magnum::GL::Texture2DArray&, int level);
-
+private:
+    UnsignedInt m_stepSize = 2;
 };
 
 }

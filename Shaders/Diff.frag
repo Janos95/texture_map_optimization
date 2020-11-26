@@ -21,9 +21,12 @@ uniform vec3 rotation;
 uniform vec3 translation;
 
 layout(location = 0)
-out vec4 gradRotation;
+out vec2 cost;
 
 layout(location = 1)
+out vec4 gradRotation;
+
+layout(location = 2)
 out vec4 gradTranslation;
 
 vec3 rotatePoint(in vec3 v, out mat3 jacRot){
@@ -65,24 +68,36 @@ mat2x3 computeSobel(vec2 uv){
 }
 
 void main() {
-   vec3 color = texture(optimizationTexture, interpolatedTextureCoordinates).rgb;
 
-   mat3 jacRot;
-   vec3 p = rotatePoint(worldPosition.xyz, jacRot);
+    vec3 color = texture(optimizationTexture, interpolatedTextureCoordinates).rgb;
 
-   mat3x2 jacProj = mat3x2(
-      fx/p.z,             0,
-      0,                  fy/p.z,
-      -fx*p.x/(p.z*p.z), -fy*p.y/(p.z*p.z)
-   );
+    /* if there is no texture value, return early */
+    if(color == vec3(0)) {
+        gradRotation = vec4(0);
+        gradTranslation = vec4(0);
+        cost = vec2(0);
+        return;
+    }
 
-   vec2 uv = gl_FragCoord.xy/textureSize(groundTruthImage, 0);
-   mat2x3 CwrtI = computeSobel(uv);
-   vec3 lossGrad = color.rgb - texture(groundTruthImage, uv).rgb; /* corresponds to a simple squared loss */
+    vec2 uv = gl_FragCoord.xy/textureSize(groundTruthImage, 0);
+    vec3 lossGrad = color.rgb - texture(groundTruthImage, uv).rgb; /* corresponds to a simple squared loss */
 
-   gradRotation.xyz = lossGrad * CwrtI * jacProj * jacRot;
-   gradTranslation.xyz = lossGrad * CwrtI * jacProj; /* jacobian wrt. Translation is the identity */
+    mat3 jacRot;
+    vec3 p = rotatePoint(worldPosition.xyz, jacRot);
 
-   gradRotation.w = 1;
-   gradTranslation.w = 1;
+    mat3x2 jacProj = mat3x2(
+       fx/p.z,             0,
+       0,                  fy/p.z,
+       -fx*p.x/(p.z*p.z), -fy*p.y/(p.z*p.z)
+    );
+
+    mat2x3 CwrtI = computeSobel(uv);
+
+    gradRotation.xyz = lossGrad * CwrtI * jacProj * jacRot;
+    gradTranslation.xyz = lossGrad * CwrtI * jacProj; /* jacobian wrt. Translation is the identity */
+    cost.x = 0.5*dot(lossGrad,lossGrad);
+
+    cost.y = 1.;
+    gradRotation.w = 1.;
+    gradTranslation.w = 1.;
 }

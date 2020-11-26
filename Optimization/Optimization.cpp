@@ -38,6 +38,9 @@ bool runOptimization(
     //m_renderPass.setTexture(*m_texture);
 
     Callback callback{[&]{
+        for(auto& kf : kfs)
+            kf.uncompressPose();
+
         renderPass.averagingPass();
         if(cb()){
             return ceres::CallbackReturnType::SOLVER_CONTINUE;
@@ -49,7 +52,7 @@ bool runOptimization(
     ceres::Problem problem;
 
     for(std::size_t i = 0; i < kfs.size(); ++i) {
-        problem.AddResidualBlock(new PhotometricCost{i, renderPass}, new ceres::TrivialLoss{}, kfs[i].pose6D.data());
+        problem.AddResidualBlock(new PhotometricCost{i, renderPass}, new ceres::TrivialLoss{}, kfs[i].tf6D.data());
     }
 
     ceres::Solver::Options options;
@@ -61,6 +64,8 @@ bool runOptimization(
     ceres::Solver::Summary summary;
 
     ceres::Solve(options, &problem, &summary);
+
+    Debug{} << summary.BriefReport().c_str();
 
     return summary.termination_type != ceres::USER_FAILURE;
 }

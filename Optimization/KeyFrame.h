@@ -33,8 +33,8 @@ Matrix4 uncompress6DTransformation(const StaticArrayView<6, const double>&);
 struct KeyFrame {
     GL::Texture2D image;
 
-    Matrix4 pose;
-    StaticArray<6, double> pose6D;
+    Matrix4 tf;
+    StaticArray<6, double> tf6D;
 
     /**
      * shorthand for calling compressTransformationMatrix on member data
