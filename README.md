@@ -1,4 +1,4 @@
-# texture_map_optimization
+# Texture Map Optimization
 
 # Building
 To build you will need the following four dependencies : [assimp](https://github.com/assimp/assimp), [ceres](https://github.com/ceres-solver/ceres-solver),  [corrade](https://github.com/mosra/corrade), [magnum](https://github.com/mosra/magnum) and [magnum-plugins](https://github.com/mosra/magnum-plugins)
