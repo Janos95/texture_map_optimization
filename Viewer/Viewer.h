@@ -112,7 +112,7 @@ struct Viewer : public Mg::Platform::Application {
     GL::Texture2D* overlay = &texture;
     UniqueFunction<void()> onNewKeyFrame = []{};
 
-    char path[256] = "/janos/TextureMapOptimization/assets/fountain_small/";
+    char path[256] = "/home/janos/TextureMapOptimization/assets/fountain_small/";
     bool loaded = false;
 };
 
