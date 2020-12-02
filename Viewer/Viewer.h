@@ -73,6 +73,8 @@ struct Viewer : public Mg::Platform::Application {
      */
     void startOptimization();
 
+    void loadScene(const char* path);
+
     bool isOptimizing = false;
 
     Optional<ArcBall> arcball;
@@ -109,6 +111,9 @@ struct Viewer : public Mg::Platform::Application {
 
     GL::Texture2D* overlay = &texture;
     UniqueFunction<void()> onNewKeyFrame = []{};
+
+    char path[256] = "/janos/TextureMapOptimization/assets/fountain_small/";
+    bool loaded = false;
 };
 
 }

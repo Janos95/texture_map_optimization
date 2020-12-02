@@ -13,6 +13,7 @@
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/StringStl.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
@@ -34,6 +35,7 @@
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/PixelFormat.h>
+#include <Corrade/Utility/Directory.h>
 
 #include "imgui_internal.h"
 
@@ -148,48 +150,8 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
     }
 
     /* setup scene*/
-    {
-        auto images = loadImages("/home/janos/TextureMapOptimization/assets/fountain_small/image"_s);
-        auto transformations = loadPoses("/home/janos/TextureMapOptimization/assets/fountain_small/scene/key.log"_s);
-
-        preprocessTransformations(transformations);
-
-        imageSize = images.front().size();
-        Debug{} << "Image size of imported images" << imageSize;
-        setupTexture(renderedImage, imageSize, GL::TextureFormat::RGBA32F);
-
-        arrayResize(keyFrames, images.size());
-        for(std::size_t i = 0; i < images.size(); ++i) {
-            //if(i % 10 != 0) continue;
-
-            auto& kf = keyFrames[i];
-
-            setupTexture(kf.image, imageSize, GL::TextureFormat::RGBA32F);
-
-            kf.image.setSubImage(0, {}, images[i]);
-            /*computer vision -> opengl */
-            kf.tf = transformations[i];
-            kf.compressPose();
-        }
-
-        meshData = *loadMeshData("/home/janos/TextureMapOptimization/assets/fountain_small/scene/blender.ply"_s);
-
-        Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::Normal);
-        Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::TextureCoordinates);
-        //MeshTools::flipFaceWindingInPlace(meshData.mutableIndices());
-        //meshData = MeshTools::duplicate(md);
-        mesh = Mg::MeshTools::compile(meshData);
-        axis = Mg::MeshTools::compile(Mg::Primitives::axis3D());
-
-        renderPass.emplace(mesh, keyFrames);
-        renderPass->setTexture(texture);
-        renderPass->setCameraParameters(640.f, 480.f, 525.f, 525.f, 319.5f, 239.5f);
-
-        /* do one averaging pass so we have some color to begin with.
-         * Also set the camera to the first key frame pose */
-        renderPass->averagingPass();
-        auto pose = keyFrames[currentKf].tf.invertedRigid();
-        arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
+    if(Cr::Utility::Directory::exists(path)) {
+        loadScene(path);
     }
 
     /* Setup ImGui, load a better font */
@@ -312,8 +274,67 @@ void Viewer::drawOptions() {
             renderPass->reloadShader();
         }
 
+        ImGui::Text("Import/Export to");
+        ImGui::InputText("##Export to", path, sizeof(path));
+
+        if(ImGui::Button("Load Scene")) {
+            loadScene(path);
+        }
+
         ImGui::End();
     }
+}
+
+void Viewer::loadScene(const char* path) {
+
+    std::string imagesPath = Cr::Utility::Directory::join({path,"image"});
+    std::string scenePath = Cr::Utility::Directory::join({path ,"scene"});
+    std::string transformationsPath = Cr::Utility::Directory::join(scenePath ,"key.log");
+    std::string meshPath = Cr::Utility::Directory::join(scenePath ,"mesh.ply");
+
+    auto images = loadImages(imagesPath);
+    auto transformations = loadPoses(transformationsPath);
+
+    preprocessTransformations(transformations);
+
+    imageSize = images.front().size();
+    Debug{} << "Image size of imported images" << imageSize;
+    setupTexture(renderedImage, imageSize, GL::TextureFormat::RGBA32F);
+
+    arrayResize(keyFrames, images.size());
+    for(std::size_t i = 0; i < images.size(); ++i) {
+        //if(i % 10 != 0) continue;
+
+        auto& kf = keyFrames[i];
+
+        setupTexture(kf.image, imageSize, GL::TextureFormat::RGBA32F);
+
+        kf.image.setSubImage(0, {}, images[i]);
+        /*computer vision -> opengl */
+        kf.tf = transformations[i];
+        kf.compressPose();
+    }
+
+    meshData = *loadMeshData(meshPath);
+
+    Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::Normal);
+    Debug{} << meshData.hasAttribute(Mg::Trade::MeshAttribute::TextureCoordinates);
+    //MeshTools::flipFaceWindingInPlace(meshData.mutableIndices());
+    //meshData = MeshTools::duplicate(md);
+    mesh = Mg::MeshTools::compile(meshData);
+    axis = Mg::MeshTools::compile(Mg::Primitives::axis3D());
+
+    renderPass.emplace(mesh, keyFrames);
+    renderPass->setTexture(texture);
+    renderPass->setCameraParameters(640.f, 480.f, 525.f, 525.f, 319.5f, 239.5f);
+
+    /* do one averaging pass so we have some color to begin with.
+     * Also set the camera to the first key frame pose */
+    renderPass->averagingPass();
+    auto pose = keyFrames[currentKf].tf.invertedRigid();
+    arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
+
+    loaded = true;
 }
 
 void Viewer::viewportEvent(ViewportEvent& event) {
@@ -440,48 +461,50 @@ void Viewer::drawEvent() {
     else if(!ImGui::GetIO().WantTextInput && isTextInputActive())
         stopTextInput();
 
+    if(loaded) {
 
-    arcball->updateTransformation();
-    Matrix4 viewTf = arcball->viewMatrix();
+        arcball->updateTransformation();
+        Matrix4 viewTf = arcball->viewMatrix();
 
-    if(drawPoses) {
-        for(auto const& kf : keyFrames) {
-            Matrix4 tf = viewTf*kf.tf.invertedRigid()*Matrix4::scaling({0.1,0.1,0.1});
-            vertexColored.setTransformationProjectionMatrix(projection*tf)
-                         .draw(axis);
+        if(drawPoses) {
+            for(auto const& kf : keyFrames) {
+                Matrix4 tf = viewTf*kf.tf.invertedRigid()*Matrix4::scaling({0.1, 0.1, 0.1});
+                vertexColored.setTransformationProjectionMatrix(projection*tf)
+                             .draw(axis);
+            }
+            //GL::Texture2D testTexture;
+            //testTexture.setMagnificationFilter(GL::SamplerFilter::Linear)
+            //           .setMinificationFilter(GL::SamplerFilter::Linear)
+            //           .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            //           .setStorage(1, GL::TextureFormat::R32F, {4096, 4096});
+            //glClearTexImage(testTexture.id(), 0, GL_RED, GL_FLOAT, Mg::Color4{1}.data());
+            //auto sum = reduce(testTexture);
         }
-        //GL::Texture2D testTexture;
-        //testTexture.setMagnificationFilter(GL::SamplerFilter::Linear)
-        //           .setMinificationFilter(GL::SamplerFilter::Linear)
-        //           .setWrapping(GL::SamplerWrapping::ClampToEdge)
-        //           .setStorage(1, GL::TextureFormat::R32F, {4096, 4096});
-        //glClearTexImage(testTexture.id(), 0, GL_RED, GL_FLOAT, Mg::Color4{1}.data());
-        //auto sum = reduce(testTexture);
+
+        /* first render the mesh using the texture */
+        phong
+                .bindDiffuseTexture(texture)
+                .setTransformationMatrix(viewTf)
+                .setNormalMatrix(viewTf.normalMatrix())
+                .setProjectionMatrix(projection)
+                .setLightPositions({{-3.0f, 10.0f, 10.0f, 0}})
+                        //.setLightPosition({-3, 10, 10})
+                        //.setDiffuseColor(0x2f83cc_rgbf)
+                .setSpecularColor(Color4{0.3})
+                .setShininess(20)
+                .draw(mesh);
+
+        /* render the texture into the upper right corner ontop */
+        auto vp = GL::defaultFramebuffer.viewport();
+        GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+
+        GL::defaultFramebuffer.setViewport({vp.max()*2./3., vp.max()});
+
+        triangleShader.bindTexture(*overlay)
+                      .draw(GL::Mesh{}.setCount(3));
+        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+        GL::defaultFramebuffer.setViewport(vp);
     }
-
-    /* first render the mesh using the texture */
-    phong
-         .bindDiffuseTexture(texture)
-         .setTransformationMatrix(viewTf)
-         .setNormalMatrix(viewTf.normalMatrix())
-         .setProjectionMatrix(projection)
-         .setLightPositions({{-3.0f, 10.0f, 10.0f, 0}})
-         //.setLightPosition({-3, 10, 10})
-         //.setDiffuseColor(0x2f83cc_rgbf)
-         .setSpecularColor(Color4{0.3})
-         .setShininess(20)
-         .draw(mesh);
-
-    /* render the texture into the upper right corner ontop */
-    auto vp = GL::defaultFramebuffer.viewport();
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-
-    GL::defaultFramebuffer.setViewport({vp.max()*2./3., vp.max()});
-
-    triangleShader.bindTexture(*overlay)
-                  .draw(GL::Mesh{}.setCount(3));
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::defaultFramebuffer.setViewport(vp);
 
     //ImGui::Begin("Viewer");
     //auto dockspaceId = ImGui::GetID("Viewer");
