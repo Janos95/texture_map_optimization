@@ -7,8 +7,7 @@
 #include "Reduction.h"
 #include "UniqueFunction.h"
 #include "Optimization.h"
-
-#include "../ScopedTimer/ScopedTimer.h"
+#include "ScopedTimer.h"
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Containers/GrowableArray.h>
@@ -20,6 +19,7 @@
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/FunctionsBatch.h>
 #include <Magnum/Primitives/Capsule.h>
 #include <Magnum/Primitives/Axis.h>
@@ -35,7 +35,7 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/PixelFormat.h>
 
-#include <SDL_events.h>
+#include "imgui_internal.h"
 
 namespace TextureMapOptimization {
 
@@ -101,7 +101,6 @@ void setupTexture(GL::Texture2D& texture, Vector2i const& size, GL::TextureForma
            .setStorage(1, format, size);
 }
 
-
 Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCreate} {
 
     /* Setup window */
@@ -112,7 +111,7 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
             .setSize(conf.size(), dpiScaling)
             .setWindowFlags(Configuration::WindowFlag::Resizable);
         GLConfiguration glConf;
-        //glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
+        glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
         if(!tryCreate(conf, glConf)) {
             create(conf, glConf.setSampleCount(0));
         }
@@ -198,13 +197,18 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
         ImGui::CreateContext();
         ImGui::StyleColorsDark();
 
+        ImGuiIO& io = ImGui::GetIO();
+
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
         ImFontConfig fontConfig;
         fontConfig.FontDataOwnedByAtlas = false;
         const Vector2 size = Vector2{windowSize()}/dpiScaling();
         Cr::Utility::Resource rs{"fonts"};
         ArrayView<const char> font = rs.getRaw(
                 "SourceSansPro-Regular.ttf");
-        ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+        io.Fonts->AddFontFromMemoryTTF(
                 const_cast<char*>(font.data()), Int(font.size()),
                 20.0f*framebufferSize().x()/size.x(), &fontConfig);
 
@@ -219,6 +223,7 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
         GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
                                        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
+
     }
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
@@ -227,83 +232,87 @@ Viewer::Viewer(Arguments const& args) : Mg::Platform::Application{args, Mg::NoCr
 }
 
 void Viewer::drawOptions() {
-    if(ImGui::Button("Run Optimization")) {
-        isOptimizing = true;
-    }
-    ImGui::SameLine();
-    if(ImGui::Button("Map Texture")) {
-        renderPass->setTexture(texture);
-        renderPass->averagingPass();
-    }
-
-    ImGui::Checkbox("Draw Poses", &drawPoses);
-
-    if(ImGui::InputInt("Keyframe Idx", &currentKf)) {
-        currentKf = Math::clamp<int>(currentKf, 0, keyFrames.size() - 1);
-        onNewKeyFrame();
-    }
-
-    static const char* options[] = {
-            "Texture",
-            "Groundtruth Image",
-            "Rendered Image",
-            "Cost",
-            "Rotation Gradient",
-            "Translation Gradient",
-    };
-
-    if(ImGui::BeginCombo("Overlay Options", options[currentOption])) {
-        for(size_t i = 0; i < COUNTOF(options); ++i) {
-            bool isSelected = i == currentOption;
-            if(ImGui::Selectable(options[i], isSelected)) {
-                currentOption = i;
-                RenderPass::VisualizatonFlag visFlag{0};
-                switch(i) {
-                    case 0:
-                        overlay = &texture;
-                        onNewKeyFrame = []{}; /* remove old callback */
-                        break;
-                    case 1:
-                        onNewKeyFrame = [this]{ overlay = &keyFrames[currentKf].image; };
-                        onNewKeyFrame();
-                        break;
-                    case 2:
-                        visFlag = RenderPass::VisualizatonFlag::RenderedImage;
-                        break;
-                    case 3:
-                        visFlag = RenderPass::VisualizatonFlag::Cost;
-                        break;
-                    case 4:
-                        visFlag = RenderPass::VisualizatonFlag::RotationGradient;
-                        break;
-                    case 5:
-                        visFlag = RenderPass::VisualizatonFlag::TranslationGradient;
-                        break;
-
-                    default: CORRADE_ASSERT(false, "Unknown Overlay Option", );
-                }
-                if(bool(visFlag)) {
-                    onNewKeyFrame = [this, visFlag]{
-                        renderPass->renderIntoTexture(renderedImage, currentKf, visFlag);
-                        GL::DefaultFramebuffer().bind();
-                    };
-                    onNewKeyFrame();
-                    overlay = &renderedImage;
-                }
-            }
-            if(isSelected)
-                ImGui::SetItemDefaultFocus();
+    if(ImGui::Begin("Options")) {
+        if(ImGui::Button("Run Optimization")) {
+            isOptimizing = true;
         }
-        ImGui::EndCombo();
-    }
+        ImGui::SameLine();
+        if(ImGui::Button("Map Texture")) {
+            renderPass->setTexture(texture);
+            renderPass->averagingPass();
+        }
 
-    if(ImGui::Button("Camera To Keyframe")) {
-        const Matrix4 pose = keyFrames[currentKf].tf.invertedRigid();
-        arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
-    }
+        ImGui::Checkbox("Draw Poses", &drawPoses);
 
-    if(ImGui::Button("Reload Shaders")) {
-        renderPass->reloadShader();
+        if(ImGui::InputInt("Keyframe Idx", &currentKf)) {
+            currentKf = Math::clamp<int>(currentKf, 0, keyFrames.size() - 1);
+            onNewKeyFrame();
+        }
+
+        static const char* options[] = {
+                "Texture",
+                "Groundtruth Image",
+                "Rendered Image",
+                "Cost",
+                "Rotation Gradient",
+                "Translation Gradient",
+        };
+
+        if(ImGui::BeginCombo("Overlay Options", options[currentOption])) {
+            for(size_t i = 0; i < COUNTOF(options); ++i) {
+                bool isSelected = i == currentOption;
+                if(ImGui::Selectable(options[i], isSelected)) {
+                    currentOption = i;
+                    RenderPass::VisualizatonFlag visFlag{0};
+                    switch(i) {
+                        case 0:
+                            overlay = &texture;
+                            onNewKeyFrame = []{}; /* remove old callback */
+                            break;
+                        case 1:
+                            onNewKeyFrame = [this]{ overlay = &keyFrames[currentKf].image; };
+                            onNewKeyFrame();
+                            break;
+                        case 2:
+                            visFlag = RenderPass::VisualizatonFlag::RenderedImage;
+                            break;
+                        case 3:
+                            visFlag = RenderPass::VisualizatonFlag::Cost;
+                            break;
+                        case 4:
+                            visFlag = RenderPass::VisualizatonFlag::RotationGradient;
+                            break;
+                        case 5:
+                            visFlag = RenderPass::VisualizatonFlag::TranslationGradient;
+                            break;
+
+                        default: CORRADE_ASSERT(false, "Unknown Overlay Option", );
+                    }
+                    if(bool(visFlag)) {
+                        onNewKeyFrame = [this, visFlag]{
+                            renderPass->renderIntoTexture(renderedImage, currentKf, visFlag);
+                            GL::DefaultFramebuffer().bind();
+                        };
+                        onNewKeyFrame();
+                        overlay = &renderedImage;
+                    }
+                }
+                if(isSelected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        if(ImGui::Button("Camera To Keyframe")) {
+            const Matrix4 pose = keyFrames[currentKf].tf.invertedRigid();
+            arcball->setViewParameters(pose.translation(), pose.translation()-pose[2].xyz(), pose[1].xyz());
+        }
+
+        if(ImGui::Button("Reload Shaders")) {
+            renderPass->reloadShader();
+        }
+
+        ImGui::End();
     }
 }
 
@@ -366,8 +375,6 @@ void Viewer::mousePressEvent(MouseEvent& event) {
     if(event.button() == MouseEvent::Button::Middle) {
         trackingMouse = true;
 
-        SDL_CaptureMouse(SDL_TRUE);
-
         arcball->initTransformation(event.position());
 
         event.setAccepted();
@@ -384,7 +391,6 @@ void Viewer::mouseReleaseEvent(MouseEvent& event) {
     if(event.button() == MouseEvent::Button::Middle) {
 
         if(trackingMouse) {
-            SDL_CaptureMouse(SDL_FALSE);
             trackingMouse = false;
             event.setAccepted();
         }
@@ -477,7 +483,12 @@ void Viewer::drawEvent() {
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::defaultFramebuffer.setViewport(vp);
 
+    //ImGui::Begin("Viewer");
+    //auto dockspaceId = ImGui::GetID("Viewer");
+    //if (ImGui::DockBuilderGetNode(dockspaceId) == nullptr)
+    //    presetLayout();
     drawOptions();
+    //ImGui::End();
 
     imgui.updateApplicationCursor(*this);
 
@@ -508,6 +519,19 @@ void Viewer::startOptimization() {
                                    [this]{ return mainLoopIteration() && isOptimizing; }
     );
     isOptimizing = false;
+}
+
+void Viewer::presetLayout() {
+    auto dockspaceId = ImGui::GetID("Viewer");
+    ImGui::DockBuilderRemoveNode(dockspaceId); // Clear out existing layout
+    ImGui::DockBuilderAddNode(dockspaceId); // Add empty node
+    ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetIO().DisplaySize);
+
+    ImGuiID dock_main_id = dockspaceId; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
+    ImGuiID dock_id_prop = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, NULL, &dock_main_id);
+
+    ImGui::DockBuilderDockWindow("Options", dock_id_prop);
+    ImGui::DockBuilderFinish(dockspaceId);
 }
 
 

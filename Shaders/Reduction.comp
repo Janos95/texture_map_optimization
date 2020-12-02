@@ -1,34 +1,37 @@
 layout(local_size_x = 1, local_size_y = 1) in;
 
 layout(rg32f, binding = 0)
-uniform readonly image2DArray costInput;
+uniform readonly image2D costInput;
 
-layout(rgba32f, binding = 1)
-uniform readonly image2DArray rotationInput;
+layout(rg32f, binding = 1)
+uniform writeonly image2D costOutput;
+
+layout(rgba32f, binding = 2)
+uniform readonly image2D rotationInput;
 
 layout(rgba32f, binding = 3)
-uniform readonly image2DArray translationInput;
+uniform writeonly image2D rotationOutput;
 
-layout(rg32f, binding = 4)
-uniform writeonly image2DArray costOutput;
+layout(rgba32f, binding = 4)
+uniform readonly image2D translationInput;
 
 layout(rgba32f, binding = 5)
-uniform writeonly image2DArray rotationOutput;
-
-layout(rgba32f, binding = 6)
-uniform writeonly image2DArray translationOutput;
+uniform writeonly image2D translationOutput;
 
 void main()
 {
-    ivec3 coordOutput = gl_GlobalInvocationID;
-    ivec3 coordInput = ivec3(BLOCK_SIZE * coordOutput, coordOutput.z);
+    ivec2 coordOutput = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 coordInput = BLOCK_SIZE * coordOutput;
 
     vec2 sumCost = vec2(0);
     vec4 sumRotation = vec4(0);
     vec4 sumTranslation = vec4(0);
+
+    float minValue, maxValue;
+
     for(int i = 0; i < BLOCK_SIZE; ++i){
         for(int j = 0; j < BLOCK_SIZE; ++j){
-            ivec3 offset = ivec3(i,j,0);
+            ivec2 offset = ivec2(i,j);
             sumCost += imageLoad(costInput, coordInput + offset).xy;
             sumRotation += imageLoad(rotationInput, coordInput + offset);
             sumTranslation += imageLoad(translationInput, coordInput + offset);

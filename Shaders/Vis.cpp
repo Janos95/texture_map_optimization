@@ -62,6 +62,7 @@ Vis& Vis::bindGradientImage(GL::Texture2D& texture) {
 Vis& Vis::setColorMapTransform(float scale, float offset) {
     setUniform(m_scaleUniform, scale);
     setUniform(m_offsetUniform, offset);
+    return *this;
 }
 
 }

@@ -1,0 +1,7 @@
+[submodule "Contrib/imgui"]
+	path = Contrib/imgui
+	url = https://github.com/Janos95/imgui
+    branch = docking
+[submodule "Contrib/magnum-integration"]
+	path = Contrib/magnum-integration
+	url = https://github.com/mosra/magnum-integration.git

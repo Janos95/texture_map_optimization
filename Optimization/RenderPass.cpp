@@ -12,6 +12,9 @@
 #include <Magnum/Trade/MeshData.h>
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Shaders/Flat.h>
+#include <Magnum/GL/TextureFormat.h>
+#include <Magnum/GL/PixelFormat.h>
+#include <Magnum/ImageView.h>
 
 #include <assert.h>
 

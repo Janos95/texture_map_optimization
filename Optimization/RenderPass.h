@@ -130,7 +130,7 @@ private:
     Shaders::Remap m_remap;
     Shaders::Combine m_combine;
     Shaders::Vis m_vis;
-    Shaders::Reduction m_reduction;
+    //Shaders::Reduction m_reduction;
 
     GL::Texture2D m_gradientRotations, m_gradientTranslations, m_costs;
 

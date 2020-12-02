@@ -18,7 +18,6 @@ target_link_libraries(Viewer
             Magnum::MeshTools
             Magnum::SceneGraph
             Magnum::Application
-            Magnum::Sdl2Application
             Magnum::Shaders
             Magnum::Primitives
             Magnum::DebugTools

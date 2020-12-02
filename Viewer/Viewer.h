@@ -23,10 +23,12 @@
 #include <Magnum/Trade/MeshData.h>
 #include <Magnum/Trade/ImageData.h>
 
-#include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/Platform/GlfwApplication.h>
 #include <Magnum/ImGuiIntegration/Context.h>
 #include <Magnum/Shaders/Phong.h>
 #include <Magnum/Shaders/VertexColor.h>
+
+#include "imgui.h"
 
 namespace TextureMapOptimization {
 
@@ -56,6 +58,8 @@ struct Viewer : public Mg::Platform::Application {
     void textInputEvent(TextInputEvent& event) override;
 
     void drawOptions();
+
+    void presetLayout();
 
     /*
      * this member function should not be called
